@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: antriyuk-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - app_storage:/var/www/html/storage
+      - app_database:/var/www/html/database
+    environment:
+      APP_NAME: "${APP_NAME:-AntriYuk}"
+      APP_ENV: "${APP_ENV:-production}"
+      APP_KEY: "${APP_KEY}"
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: "${APP_URL:-http://localhost:8080}"
+      DB_CONNECTION: sqlite
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+      BROADCAST_CONNECTION: reverb
+      REVERB_APP_ID: "${REVERB_APP_ID:-my-app-id}"
+      REVERB_APP_KEY: "${REVERB_APP_KEY:-my-app-key}"
+      REVERB_APP_SECRET: "${REVERB_APP_SECRET:-my-app-secret}"
+      REVERB_HOST: "0.0.0.0"
+      REVERB_PORT: "8080"
+      REVERB_SCHEME: "${REVERB_SCHEME:-http}"
+      VITE_REVERB_APP_KEY: "${REVERB_APP_KEY:-my-app-key}"
+      VITE_REVERB_HOST: "${VITE_REVERB_HOST:-localhost}"
+      VITE_REVERB_PORT: "8080"
+      VITE_REVERB_SCHEME: "${REVERB_SCHEME:-http}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/up"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  app_storage:
+  app_database:
