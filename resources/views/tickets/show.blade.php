@@ -17,7 +17,7 @@
             <!-- Main Ticket Card -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden">
                 <!-- Ticket Header with Ticket Number -->
-                <div class="relative bg-blue-600 text-white p-8 text-center">
+                <div id="ticket-download-card" class="relative bg-blue-600 text-white p-8 text-center">
                     <!-- Decorative Pattern -->
                     <div class="absolute inset-0 opacity-10">
                         <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -52,6 +52,61 @@
 
                 <!-- Status Section -->
                 <div id="ticket-status-section" class="p-6">
+                    @if(!in_array($ticket->status, ['skipped', 'cancelled']))
+                        <!-- Progress Stepper -->
+                        <div class="mb-8 px-2">
+                            <div class="flex items-center justify-between relative">
+                                <!-- Background line -->
+                                <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 dark:bg-slate-700 -z-10 rounded-full"></div>
+                                <!-- Active progress line -->
+                                @php
+                                    $progressWidth = '0%';
+                                    if ($ticket->status === 'waiting') $progressWidth = '15%';
+                                    elseif ($ticket->status === 'calling') $progressWidth = '50%';
+                                    elseif ($ticket->status === 'serving') $progressWidth = '85%';
+                                    elseif ($ticket->status === 'completed') $progressWidth = '100%';
+                                @endphp
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-blue-600 dark:bg-blue-500 -z-10 rounded-full transition-all duration-500" style="width: {{ $progressWidth }}"></div>
+
+                                <!-- Step 1: Waiting -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['waiting', 'calling', 'serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500' }}">
+                                        1
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Antri</span>
+                                </div>
+
+                                <!-- Step 2: Calling -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['calling', 'serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : ($ticket->status === 'waiting' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        2
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Dipanggil</span>
+                                </div>
+
+                                <!-- Step 3: Serving -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : ($ticket->status === 'calling' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 animate-pulse' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        3
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Dilayani</span>
+                                </div>
+
+                                <!-- Step 4: Completed -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ $ticket->status === 'completed' ? 'bg-green-600 border-green-600 text-white' : ($ticket->status === 'serving' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        ✓
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Selesai</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="text-center mb-6">
                         @if($ticket->status === 'waiting')
                             <div class="inline-flex items-center bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-6 py-3 rounded-2xl">
@@ -192,13 +247,60 @@
                         <div id="qrcode" class="inline-block"></div>
                     </div>
 
-                    <a href="{{ route('locations.show', $ticket->location) }}" class="flex items-center justify-center text-blue-600 hover:text-blue-700 font-semibold">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Lihat Antrian Lokasi
-                    </a>
+                    <!-- Download & View buttons -->
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button
+                            id="btn-download-ticket"
+                            onclick="downloadTicketCard()"
+                            class="flex-1 flex items-center justify-center gap-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Simpan Tiket
+                        </button>
+
+                        <a href="{{ route('locations.show', $ticket->location) }}" class="flex-1 flex items-center justify-center gap-2 border-2 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-3 px-4 rounded-xl font-semibold transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Lihat Antrian
+                        </a>
+                    </div>
+
+                    @if($ticket->status === 'waiting')
+                        <div x-data="{ open: false }" class="mt-4 border-t border-slate-100 dark:border-slate-700/60 pt-4">
+                            <button
+                                @click="open = true"
+                                class="w-full bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Batalkan Tiket
+                            </button>
+
+                            {{-- Confirm Modal --}}
+                            <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                                <div @click.away="open = false" class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-700 text-left">
+                                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Batalkan Tiket?</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Apakah Anda yakin ingin membatalkan tiket ini? Tindakan ini tidak dapat dibatalkan.</p>
+                                    <div class="flex justify-end gap-3">
+                                        <button @click="open = false" type="button" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                            Batal
+                                        </button>
+                                        <form method="POST" action="{{ route('tickets.cancel-self', $ticket) }}">
+                                            @csrf
+                                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors">
+                                                Ya, Batalkan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 @if($ticket->status === 'completed' && !$ticket->feedback)
@@ -266,18 +368,8 @@
     </div>
 
     @push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module">
-        // Generate QR Code
-        if (document.getElementById('qrcode') && typeof QRCode !== 'undefined') {
-            new QRCode(document.getElementById('qrcode'), {
-                text: '{{ route("tickets.show", $ticket) }}',
-                width: 100,
-                height: 100,
-                colorDark: '#1e293b',
-                colorLight: '#ffffff',
-            });
-        }
-
         let refreshTimer;
 
         async function refreshTicketStatus(playSound = false, notifyData = null) {
@@ -370,6 +462,57 @@
                 localStorage.setItem('antriyuk_my_tickets', JSON.stringify(tickets));
             } catch (e) {}
         })();
+
+        // Generate QR Code of the current ticket URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const qrEl = document.getElementById('qrcode');
+            if (qrEl && window.QRCode) {
+                new QRCode(qrEl, {
+                    text: "{{ route('tickets.show', $ticket) }}",
+                    width: 128,
+                    height: 128,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            }
+        });
+    </script>
+
+    <script>
+        async function downloadTicketCard() {
+            const btn = document.getElementById('btn-download-ticket');
+            const cardEl = document.getElementById('ticket-download-card');
+            if (!cardEl || !window.html2canvas) return;
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Menyiapkan...';
+            btn.disabled = true;
+
+            try {
+                const canvas = await html2canvas(cardEl, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: null,
+                    logging: false,
+                });
+
+                const link = document.createElement('a');
+                link.download = 'tiket-{{ $ticket->ticket_number }}.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Tersimpan!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Download error:', err);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
     </script>
     @endpush
 </x-layout>

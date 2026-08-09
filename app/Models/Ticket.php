@@ -23,6 +23,8 @@ class Ticket extends Model
         'customer_name',
         'customer_phone',
         'status',
+        'is_priority',
+        'priority_reason',
         'called_at',
         'served_at',
         'completed_at',
@@ -33,6 +35,7 @@ class Ticket extends Model
     protected function casts(): array
     {
         return [
+            'is_priority' => 'boolean',
             'called_at' => 'datetime',
             'served_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -71,9 +74,14 @@ class Ticket extends Model
             return 0;
         }
 
-        return Ticket::where('location_id', $this->location_id)
-            ->where('status', 'waiting')
-            ->where('created_at', '<', $this->created_at)
+        $query = Ticket::where('location_id', $this->location_id)
+            ->where('status', 'waiting');
+
+        if ($this->service_category_id) {
+            $query->where('service_category_id', $this->service_category_id);
+        }
+
+        return $query->where('created_at', '<', $this->created_at)
             ->count() + 1;
     }
 
@@ -83,7 +91,7 @@ class Ticket extends Model
             return 0;
         }
 
-        return $this->location->getEstimatedWaitTime($this->position);
+        return $this->location->getEstimatedWaitTimeForCategory($this->position, $this->service_category_id);
     }
 
     public function call(Counter $counter, User $operator): void
@@ -142,9 +150,9 @@ class Ticket extends Model
         broadcast(new TicketStatusChanged($this))->toOthers();
     }
 
-    public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null): self
+    public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null, bool $isPriority = false, ?string $priorityReason = null): self
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($location, $customerName, $customerPhone, $serviceCategoryId) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($location, $customerName, $customerPhone, $serviceCategoryId, $isPriority, $priorityReason) {
             // Count today's tickets with a row lock to prevent race conditions on ticket number generation
             $todayCount = self::where('location_id', $location->id)
                 ->whereDate('created_at', today())
@@ -160,6 +168,8 @@ class Ticket extends Model
                 'customer_name' => $customerName,
                 'customer_phone' => $customerPhone,
                 'status' => 'waiting',
+                'is_priority' => $isPriority,
+                'priority_reason' => $priorityReason,
             ]);
 
             broadcast(new TicketCreated($ticket))->toOthers();

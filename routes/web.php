@@ -30,6 +30,7 @@ Route::get('/', function () {
 Route::get('/locations', [LocationController::class, 'index'])->name('locations.index');
 Route::get('/locations/{location}', [LocationController::class, 'show'])->name('locations.show');
 Route::get('/locations/{location}/display', [LocationController::class, 'display'])->name('locations.display');
+Route::get('/locations/{location}/kiosk', [LocationController::class, 'kiosk'])->name('locations.kiosk');
 
 // Ticket routes (public)
 Route::get('/tickets/check', [TicketController::class, 'check'])->name('tickets.check');
@@ -37,7 +38,10 @@ Route::get('/locations/{location}/ticket', [TicketController::class, 'create'])-
 Route::post('/locations/{location}/ticket', [TicketController::class, 'store'])
     ->middleware('throttle:3,1')
     ->name('tickets.store');
+Route::get('/locations/{location}/ticket/full', [TicketController::class, 'full'])->name('tickets.full');
 Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+Route::get('/tickets/{ticket}/print', [TicketController::class, 'print'])->name('tickets.print');
+Route::post('/tickets/{ticket}/cancel-self', [TicketController::class, 'cancelSelf'])->name('tickets.cancel-self');
 
 // Feedback routes (public)
 Route::post('/tickets/{ticket}/feedback', [FeedbackController::class, 'store'])->name('feedback.store');
@@ -98,6 +102,10 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->group(fu
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('admin.reports.export');
+
+    // Live Monitor
+    Route::get('/monitor', [AdminController::class, 'monitor'])->name('admin.monitor');
 
     // Service Category management
     Route::get('/locations/{location}/categories', [AdminController::class, 'serviceCategories'])->name('admin.categories');
@@ -105,3 +113,11 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->group(fu
     Route::post('/categories/{category}/toggle', [AdminController::class, 'toggleServiceCategory'])->name('admin.categories.toggle');
     Route::delete('/categories/{category}', [AdminController::class, 'deleteServiceCategory'])->name('admin.categories.delete');
 });
+
+// Locale switcher route
+Route::get('/lang/{locale}', function (string $locale) {
+    if (in_array($locale, ['id', 'en'])) {
+        session(['locale' => $locale]);
+    }
+    return back();
+})->name('lang.switch');

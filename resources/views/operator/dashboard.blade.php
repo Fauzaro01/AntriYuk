@@ -142,6 +142,11 @@
                             <div class="p-6">
                                 @if($currentTicket)
                                     <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-8 text-center mb-6">
+                                        @if($currentTicket->is_priority)
+                                            <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
+                                                🚨 PRIORITAS — {{ match($currentTicket->priority_reason) { 'elderly' => 'Lansia', 'pregnant' => 'Ibu Hamil', 'disability' => 'Disabilitas', default => 'Prioritas' } }}
+                                            </span>
+                                        @endif
                                         <p class="text-blue-600 font-medium mb-2">
                                             @if($currentTicket->status === 'calling')
                                                 <span class="inline-flex items-center">
@@ -251,13 +256,18 @@
                             @else
                                 <div class="space-y-3">
                                     @foreach($waitingTickets->take(10) as $ticket)
-                                        <div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/60 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <div class="flex items-center justify-between p-4 {{ $ticket->is_priority ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-slate-50 dark:bg-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-700' }} rounded-xl transition-colors">
                                             <div class="flex items-center space-x-4">
-                                                <span class="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center text-sm font-bold">
+                                                <span class="w-10 h-10 {{ $ticket->is_priority ? 'bg-red-600' : 'bg-blue-600' }} text-white rounded-xl flex items-center justify-center text-sm font-bold">
                                                     {{ $loop->iteration }}
                                                 </span>
                                                 <div>
-                                                    <span class="font-bold text-slate-900 dark:text-white text-lg">{{ $ticket->ticket_number }}</span>
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="font-bold text-slate-900 dark:text-white text-lg">{{ $ticket->ticket_number }}</span>
+                                                        @if($ticket->is_priority)
+                                                            <span class="text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold px-2 py-0.5 rounded-full">🚨 {{ match($ticket->priority_reason) { 'elderly' => 'Lansia', 'pregnant' => 'Hamil', 'disability' => 'Disabilitas', default => 'Prioritas' } }}</span>
+                                                        @endif
+                                                    </div>
                                                     @if($ticket->customer_name)
                                                         <span class="block text-slate-500 dark:text-slate-400 text-sm">{{ $ticket->customer_name }}</span>
                                                     @endif
@@ -337,6 +347,58 @@
     <script type="module">
         let refreshTimer;
 
+        // Request browser notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Web Audio API Synthesized Premium Chime Sound
+        function playChime() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const audioCtx = new AudioContext();
+                const now = audioCtx.currentTime;
+
+                // Tone 1 (Chime base note)
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, now); // C5
+                osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.15); // A5
+                gain1.gain.setValueAtTime(0.12, now);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.6);
+
+                // Tone 2 (Harmonic note slightly delayed)
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.25); // C6
+                gain2.gain.setValueAtTime(0.1, now + 0.1);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start(now + 0.1);
+                osc2.stop(now + 0.7);
+            } catch (e) {
+                console.warn('Synthesized chime sound blocked or failed:', e);
+            }
+        }
+
+        function notifyNewTicket(ticket) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('🚨 Antrian Baru Masuk!', {
+                    body: `Tiket ${ticket.ticket_number} telah ditambahkan ke daftar tunggu.`,
+                    requireInteraction: false
+                });
+            }
+        }
+
         async function refreshDashboard() {
             clearTimeout(refreshTimer);
             refreshTimer = setTimeout(async () => {
@@ -362,7 +424,11 @@
         }
 
         window.Echo.channel('location.{{ $location->id }}')
-            .listen('.ticket.created', refreshDashboard)
+            .listen('.ticket.created', (e) => {
+                playChime();
+                notifyNewTicket(e.ticket);
+                refreshDashboard();
+            })
             .listen('.ticket.status.changed', refreshDashboard)
             .listen('.queue.updated', refreshDashboard);
     </script>

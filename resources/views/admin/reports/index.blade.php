@@ -25,30 +25,42 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <!-- Filters -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 mb-8">
-                <form method="GET" action="{{ route('admin.reports') }}" class="flex flex-wrap gap-4 items-end">
+                <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <form method="GET" action="{{ route('admin.reports') }}" class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Periode</label>
+                            <select name="period" class="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white text-sm">
+                                <option value="today" {{ $period === 'today' ? 'selected' : '' }}>Hari Ini</option>
+                                <option value="week" {{ $period === 'week' ? 'selected' : '' }}>Minggu Ini</option>
+                                <option value="month" {{ $period === 'month' ? 'selected' : '' }}>Bulan Ini</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Lokasi</label>
+                            <select name="location_id" class="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white text-sm">
+                                <option value="">Semua Lokasi</option>
+                                @foreach($locations as $loc)
+                                    <option value="{{ $loc->id }}" {{ $locationId == $loc->id ? 'selected' : '' }}>
+                                        {{ $loc->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors">
+                            Filter
+                        </button>
+                    </form>
+
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Periode</label>
-                        <select name="period" class="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white text-sm">
-                            <option value="today" {{ $period === 'today' ? 'selected' : '' }}>Hari Ini</option>
-                            <option value="week" {{ $period === 'week' ? 'selected' : '' }}>Minggu Ini</option>
-                            <option value="month" {{ $period === 'month' ? 'selected' : '' }}>Bulan Ini</option>
-                        </select>
+                        <a href="{{ route('admin.reports.export', ['period' => $period, 'location_id' => $locationId]) }}" 
+                           class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors shadow-sm active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Unduh Excel (.csv)
+                        </a>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Lokasi</label>
-                        <select name="location_id" class="border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 dark:text-white text-sm">
-                            <option value="">Semua Lokasi</option>
-                            @foreach($locations as $loc)
-                                <option value="{{ $loc->id }}" {{ $locationId == $loc->id ? 'selected' : '' }}>
-                                    {{ $loc->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
-                        Filter
-                    </button>
-                </form>
+                </div>
             </div>
 
             <!-- Stats Grid -->

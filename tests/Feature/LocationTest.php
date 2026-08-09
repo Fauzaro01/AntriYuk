@@ -158,3 +158,64 @@ test('location calculates estimated wait time dynamically based on completed tic
     expect($location->getEstimatedWaitTime(4))->toBe(10);
 });
 
+test('location queue capacity limits ticketing', function () {
+    $location = Location::factory()->create([
+        'code' => 'CS',
+        'open_time' => '00:00',
+        'close_time' => '23:59',
+        'max_daily_tickets' => 2,
+    ]);
+
+    // Ticket 1: OK
+    $this->post("/locations/{$location->id}/ticket", ['customer_name' => 'First']);
+    // Ticket 2: OK
+    $this->post("/locations/{$location->id}/ticket", ['customer_name' => 'Second']);
+
+    // Ticket 3: Should redirect to full page
+    $response = $this->post("/locations/{$location->id}/ticket", ['customer_name' => 'Third']);
+    $response->assertRedirect("/locations/{$location->id}/ticket/full");
+
+    $response2 = $this->get("/locations/{$location->id}/ticket/full");
+    $response2->assertStatus(200);
+    $response2->assertSee('Antrian Penuh');
+
+    expect(Ticket::where('location_id', $location->id)->count())->toBe(2);
+});
+
+test('user can self cancel their ticket when waiting', function () {
+    $location = Location::factory()->create(['code' => 'CS']);
+    $ticket = Ticket::factory()->create([
+        'location_id' => $location->id,
+        'status' => 'waiting',
+    ]);
+
+    $response = $this->post("/tickets/{$ticket->id}/cancel-self");
+    $response->assertRedirect("/tickets/{$ticket->id}");
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('cancelled');
+});
+
+test('user can switch application language and store preference in session', function () {
+    $location = Location::factory()->create([
+        'code' => 'CS',
+        'open_time' => '00:00',
+        'close_time' => '23:59',
+    ]);
+
+    // ID by default
+    $responseId = $this->get("/locations/{$location->id}/kiosk");
+    $responseId->assertSee('Ambil Tiket');
+
+    // Switch to EN
+    $switchResponse = $this->get("/lang/en");
+    $switchResponse->assertSessionHas('locale', 'en');
+    $switchResponse->assertRedirect();
+
+    // EN view
+    $responseEn = $this->withSession(['locale' => 'en'])->get("/locations/{$location->id}/kiosk");
+    $responseEn->assertSee('Take Ticket');
+});
+
+
+

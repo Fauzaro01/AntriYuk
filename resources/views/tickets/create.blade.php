@@ -66,7 +66,7 @@
                     <form method="POST" action="{{ route('tickets.store', $location) }}">
                         @csrf
 
-                        <div class="space-y-5">
+                <div class="space-y-5" x-data="{ prioritySelected: '{{ old('priority_reason', '') }}' }">
                             @if(isset($serviceCategories) && $serviceCategories->count() > 0)
                             <div>
                                 <label for="service_category_id" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -90,6 +90,54 @@
                                 @enderror
                             </div>
                             @endif
+
+                            {{-- Priority Queue Selection --}}
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                                    Layanan Prioritas <span class="text-slate-400 font-normal">(Jika diperlukan)</span>
+                                </label>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Tiket prioritas akan didahulukan dalam antrian.</p>
+
+                                <input type="hidden" name="is_priority" :value="prioritySelected ? '1' : ''"> 
+                                <input type="hidden" name="priority_reason" :value="prioritySelected">
+
+                                <div class="grid grid-cols-3 gap-3">
+                                    {{-- Elderly --}}
+                                    <button type="button"
+                                        @click="prioritySelected = (prioritySelected === 'elderly') ? '' : 'elderly'"
+                                        :class="prioritySelected === 'elderly' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 ring-2 ring-orange-500' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-orange-300'"
+                                        class="flex flex-col items-center p-3 rounded-xl border-2 transition-all text-center cursor-pointer"
+                                    >
+                                        <span class="text-2xl mb-1">🧓</span>
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Lansia</span>
+                                    </button>
+
+                                    {{-- Pregnant --}}
+                                    <button type="button"
+                                        @click="prioritySelected = (prioritySelected === 'pregnant') ? '' : 'pregnant'"
+                                        :class="prioritySelected === 'pregnant' ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/20 ring-2 ring-pink-500' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-pink-300'"
+                                        class="flex flex-col items-center p-3 rounded-xl border-2 transition-all text-center cursor-pointer"
+                                    >
+                                        <span class="text-2xl mb-1">🤰</span>
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Ibu Hamil</span>
+                                    </button>
+
+                                    {{-- Disability --}}
+                                    <button type="button"
+                                        @click="prioritySelected = (prioritySelected === 'disability') ? '' : 'disability'"
+                                        :class="prioritySelected === 'disability' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-blue-300'"
+                                        class="flex flex-col items-center p-3 rounded-xl border-2 transition-all text-center cursor-pointer"
+                                    >
+                                        <span class="text-2xl mb-1">♿</span>
+                                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">Disabilitas</span>
+                                    </button>
+                                </div>
+
+                                <p x-show="prioritySelected" x-cloak class="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    Tiket Anda akan mendapat prioritas antrian
+                                </p>
+                            </div>
 
                             <div>
                                 <label for="customer_name" class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">

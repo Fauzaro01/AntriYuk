@@ -123,3 +123,29 @@ test('reports filter feedback statistics and operator performance by location', 
     $response->assertDontSee('Operator Dua');
 });
 
+test('admin can export reports to csv', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $location = Location::factory()->create(['code' => 'RPT', 'name' => 'HQ Service']);
+    
+    Ticket::factory()->create([
+        'location_id' => $location->id,
+        'ticket_number' => 'RPT-123',
+        'customer_name' => 'Alex Doe',
+        'status' => 'completed',
+    ]);
+
+    $response = $this->actingAs($admin)->get('/admin/reports/export?period=today&location_id=' . $location->id);
+
+    $response->assertStatus(200);
+    $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+    
+    $disposition = $response->headers->get('Content-Disposition');
+    expect($disposition)->toContain('attachment; filename="laporan-antrian-today-');
+    
+    $content = $response->streamedContent();
+    expect($content)->toContain('RPT-123');
+    expect($content)->toContain('HQ Service');
+    expect($content)->toContain('Alex Doe');
+});
+
+
