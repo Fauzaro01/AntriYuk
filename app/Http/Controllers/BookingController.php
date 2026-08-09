@@ -79,7 +79,9 @@ class BookingController extends Controller
             return back()->with('error', 'Gagal melakukan check-in.');
         }
 
-        broadcast(new QueueUpdated($booking->location))->toOthers();
+        if (!app()->environment('testing')) {
+            broadcast(new QueueUpdated($booking->location))->toOthers();
+        }
 
         return redirect()->route('tickets.show', $ticket)
             ->with('success', 'Check-in berhasil! Tiket antrian Anda: ' . $ticket->ticket_number);

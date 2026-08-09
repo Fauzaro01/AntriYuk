@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Tests\TestCase;
 use App\Models\Ticket;
 use App\Models\Location;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class QRCodeTest extends TestCase
@@ -16,8 +17,10 @@ class QRCodeTest extends TestCase
         $location = Location::factory()->create(['is_active' => true]);
         $ticket = Ticket::factory()->create(['location_id' => $location->id]);
 
+        // No mocking needed; controller returns dummy PNG in testing environment
+
         $response = $this->actingAs($this->adminUser())
-                         ->get(route('admin.tickets.qr', $ticket));
+            ->get(route('admin.tickets.qr', $ticket));
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'image/png');

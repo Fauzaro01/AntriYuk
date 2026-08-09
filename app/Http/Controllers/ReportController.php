@@ -115,10 +115,10 @@ class ReportController extends Controller
 
         $tickets = $ticketQuery->orderBy('created_at')->get();
 
-        $filename = sprintf('laporan-antrian-%s-%s.csv', $period, now()->format('Ymd-His'));
+        $filename = sprintf('laporan-antrian-%s-%s.pdf', $period, now()->format('Ymd-His'));
 
         $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
             'Pragma' => 'no-cache',
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',

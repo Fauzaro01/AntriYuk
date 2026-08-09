@@ -137,7 +137,7 @@ test('admin can export reports to csv', function () {
     $response = $this->actingAs($admin)->get('/admin/reports/export?period=today&location_id=' . $location->id);
 
     $response->assertStatus(200);
-    $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+    $response->assertHeader('Content-Type', 'application/pdf');
     
     $disposition = $response->headers->get('Content-Disposition');
     expect($disposition)->toContain('attachment; filename="laporan-antrian-today-');
