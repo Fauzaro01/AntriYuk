@@ -36,7 +36,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">Total Lokasi</p>
-                            <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{{ $stats['total_locations'] }}</p>
+                            <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1" data-stat="total_locations">{{ $stats['total_locations'] }}</p>
                             <p class="text-sm text-green-600 dark:text-green-400 mt-1">{{ $stats['active_locations'] }} aktif</p>
                         </div>
                         <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center">

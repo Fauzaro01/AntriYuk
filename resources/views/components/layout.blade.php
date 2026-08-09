@@ -17,6 +17,9 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
+<link rel="manifest" href="{{ asset('manifest.json') }}">
+<meta name="theme-color" content="#0d6efd">
+<meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-300">
     <!-- Navigation -->
@@ -155,5 +158,10 @@
     </script>
 
     @stack('scripts')
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('{{ asset('service-worker.js') }}');
+}
+</script>
 </body>
 </html>

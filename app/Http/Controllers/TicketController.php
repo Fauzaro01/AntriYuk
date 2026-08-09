@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TicketController extends Controller
 {
@@ -104,4 +105,17 @@ class TicketController extends Controller
         $ticket->load(['location', 'serviceCategory']);
         return view('tickets.print', compact('ticket'));
     }
+    /**
+     * Generate server‑side QR code PNG for the ticket.
+     *
+     * @param  \App\Models\Ticket  $ticket
+     * @return \Illuminate\Http\Response
+     */
+    public function qrCode(Ticket $ticket)
+    {
+        $url = route('tickets.show', $ticket);
+        $png = QrCode::format('png')->size(256)->generate($url);
+        return response($png)->header('Content-Type', 'image/png');
+    }
 }
+

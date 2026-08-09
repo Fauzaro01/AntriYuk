@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\ServiceCategory;
 use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -58,6 +59,20 @@ class AdminController extends Controller
         ];
 
         return view('admin.dashboard', compact('stats', 'locations', 'donutData', 'hourlyLabels', 'hourlyValues', 'locationChartData'));
+    }
+
+    // Realtime stats endpoint for dashboard
+    public function realtimeStats(): \Illuminate\Http\JsonResponse
+    {
+        $stats = [
+            'total_locations' => Location::count(),
+            'active_locations' => Location::where('is_active', true)->count(),
+            'total_operators' => User::where('role', 'operator')->count(),
+            'today_tickets' => Ticket::whereDate('created_at', today())->count(),
+            'today_completed' => Ticket::whereDate('created_at', today())->where('status', 'completed')->count(),
+            'today_waiting' => Ticket::where('status', 'waiting')->count(),
+        ];
+        return response()->json($stats);
     }
 
     // Location Management
@@ -229,3 +244,6 @@ class AdminController extends Controller
         return view('admin.monitor', compact('locations'));
     }
 }
+
+
+

@@ -13,6 +13,8 @@ class TicketStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public $broadcastConnection = 'reverb';
+
     public function __construct(
         public Ticket $ticket
     ) {}
@@ -20,8 +22,7 @@ class TicketStatusChanged implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('location.' . $this->ticket->location_id),
-            new Channel('ticket.' . $this->ticket->id),
+            new PrivateChannel('dashboard.admin'),
         ];
     }
 

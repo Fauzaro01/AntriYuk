@@ -81,6 +81,7 @@ Route::middleware(['auth', EnsureUserIsOperator::class])->prefix('operator')->gr
 // Admin routes
 Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/realtime-stats', [AdminController::class, 'realtimeStats'])->name('admin.realtime-stats');
 
     // Location management
     Route::get('/locations', [AdminController::class, 'locations'])->name('admin.locations');
@@ -112,6 +113,7 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->group(fu
     Route::post('/locations/{location}/categories', [AdminController::class, 'storeServiceCategory'])->name('admin.categories.store');
     Route::post('/categories/{category}/toggle', [AdminController::class, 'toggleServiceCategory'])->name('admin.categories.toggle');
     Route::delete('/categories/{category}', [AdminController::class, 'deleteServiceCategory'])->name('admin.categories.delete');
+    Route::get('/tickets/{ticket}/qr', [TicketController::class, 'qrCode'])->name('admin.tickets.qr');
 });
 
 // Locale switcher route

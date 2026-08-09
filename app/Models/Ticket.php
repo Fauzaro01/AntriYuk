@@ -68,6 +68,12 @@ class Ticket extends Model
         return $this->hasOne(Feedback::class);
     }
 
+    // Rating relationship
+    public function rating(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Rating::class);
+    }
+
     public function getPositionAttribute(): int
     {
         if ($this->status !== 'waiting') {

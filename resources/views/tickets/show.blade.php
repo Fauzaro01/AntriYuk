@@ -238,13 +238,12 @@
                         </dl>
                     </div>
                 </div>
-
                 <!-- Actions -->
                 <div class="bg-slate-50 dark:bg-slate-900/50 p-6 border-t border-slate-200 dark:border-slate-700">
                     <!-- QR Code -->
                     <div class="text-center mb-4">
                         <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">Scan QR untuk cek status</p>
-                        <div id="qrcode" class="inline-block"></div>
+                        <img src="{{ route('admin.tickets.qr', $ticket) }}" alt="QR Code" class="inline-block" />
                     </div>
 
                     <!-- Download & View buttons -->
