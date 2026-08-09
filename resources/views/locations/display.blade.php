@@ -13,53 +13,85 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
-    <div class="min-h-screen flex flex-col">
-        <!-- Header -->
-        <header class="bg-slate-800 px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold">{{ $location->name }}</h1>
-                    <p class="text-slate-400">{{ $location->description }}</p>
-                </div>
-                <div class="text-right">
-                    <div class="text-4xl font-bold" id="clock">--:--:--</div>
-                    <div class="text-slate-400" id="date">--</div>
-                </div>
+    <div id="audio-setup-overlay" class="fixed inset-0 bg-slate-950/95 flex items-center justify-center z-50 transition-opacity duration-500">
+        <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-md w-full mx-4 text-center shadow-2xl">
+            <div class="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .9-1.077 1.34-1.707.707L5.586 15z" />
+                </svg>
             </div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="flex-1 p-8">
-            <div class="grid lg:grid-cols-3 gap-8 h-full">
-                <!-- Currently Calling -->
-                <div class="lg:col-span-2">
-                    <h2 class="text-xl font-semibold text-slate-300 mb-4">SEDANG DIPANGGIL</h2>
-                    <div id="calling-tickets" class="grid md:grid-cols-2 gap-6">
-                        <div class="bg-slate-800 rounded-2xl p-8 text-center">
-                            <p class="text-slate-500">Memuat...</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Waiting Queue -->
-                <div class="bg-slate-800 rounded-2xl p-6">
-                    <h2 class="text-xl font-semibold text-slate-300 mb-4">ANTRIAN BERIKUTNYA</h2>
-                    <div id="waiting-tickets" class="space-y-3">
-                        <p class="text-slate-500 text-center py-4">Memuat...</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Footer -->
-        <footer class="bg-slate-800 px-8 py-4">
-            <div class="flex items-center justify-between text-slate-400">
-                <span>AntriYuk - Sistem Manajemen Antrian</span>
-                <span id="waiting-count">0 antrian menunggu</span>
-            </div>
-        </footer>
+            <h3 class="text-2xl font-bold text-white mb-3">Aktifkan Suara Display</h3>
+            <p class="text-slate-400 mb-6 text-sm leading-relaxed">
+                Browser memerlukan interaksi pengguna satu kali untuk mengaktifkan suara bel ("ding") dan panggilan suara (Text-to-Speech) pada layar display antrian ini.
+            </p>
+            <button onclick="startDisplay()" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all">
+                Mulai Layar & Aktifkan Audio
+            </button>
+        </div>
     </div>
+
+    <script>
+        // Audio and display start helper
+        window.audioActivated = false;
+
+        function startDisplay() {
+            // Unblock audio
+            const audio = new Audio('/sounds/ding.mp3');
+            audio.play().catch(() => {});
+            
+            if ('speechSynthesis' in window) {
+                const welcome = new SpeechSynthesisUtterance("Sistem suara aktif");
+                welcome.lang = "id-ID";
+                welcome.volume = 0; // Silent welcome to activate TTS permission
+                window.speechSynthesis.speak(welcome);
+            }
+
+            window.audioActivated = true;
+            sessionStorage.setItem('displayAudioActivated', 'true');
+
+            const overlay = document.getElementById('audio-setup-overlay');
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 500);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem('displayAudioActivated') === 'true') {
+                const overlay = document.getElementById('audio-setup-overlay');
+                if (overlay) overlay.style.display = 'none';
+                window.audioActivated = true;
+            }
+        });
+
+        // TTS Message generator for Indonesian queue calls
+        function formatTTSMessage(ticketNumber, counterName) {
+            const parts = ticketNumber.split('-');
+            const letters = parts[0] || '';
+            const numbers = parts[1] || '';
+
+            const spelledLetters = letters.split('').join(' ');
+
+            const digitMap = {
+                '0': 'kosong', '1': 'satu', '2': 'dua', '3': 'tiga', '4': 'empat',
+                '5': 'lima', '6': 'enam', '7': 'tujuh', '8': 'delapan', '9': 'sembilan'
+            };
+            const spelledNumbers = numbers.split('').map(char => digitMap[char] || char).join(' ');
+
+            let formattedCounter = counterName || 'loket';
+            formattedCounter = formattedCounter
+                .replace(/CS/i, 'C S')
+                .replace(/PAY/i, 'P A Y')
+                .replace(/REG/i, 'R E G')
+                .replace(/\b1\b/g, 'satu')
+                .replace(/\b2\b/g, 'dua')
+                .replace(/\b3\b/g, 'tiga')
+                .replace(/\b4\b/g, 'empat')
+                .replace(/\b5\b/g, 'lima');
+
+            return `Nomor antrian, ${spelledLetters}, ${spelledNumbers}, silakan menuju, ${formattedCounter}`;
+        }
+    </script>
 
     <script type="module">
         // Clock
@@ -91,8 +123,10 @@
         window.Echo.channel('location.{{ $location->id }}')
             .listen('.ticket.called', (e) => {
                 // Play sound
-                const audio = new Audio('/sounds/ding.mp3');
-                audio.play().catch(() => {});
+                if (window.audioActivated) {
+                    const audio = new Audio('/sounds/ding.mp3');
+                    audio.play().catch(() => {});
+                }
 
                 // Show notification
                 const container = document.getElementById('calling-tickets');
@@ -104,7 +138,18 @@
                     </div>
                 `;
 
-                setTimeout(() => location.reload(), 5000);
+                // Speak ticket call
+                if (window.audioActivated && 'speechSynthesis' in window) {
+                    setTimeout(() => {
+                        const ttsText = formatTTSMessage(e.ticket.ticket_number, e.counter?.name);
+                        const speech = new SpeechSynthesisUtterance(ttsText);
+                        speech.lang = 'id-ID';
+                        speech.rate = 0.9;
+                        window.speechSynthesis.speak(speech);
+                    }, 1200);
+                }
+
+                setTimeout(() => location.reload(), 8000);
             })
             .listen('.ticket.status.changed', (e) => {
                 location.reload();

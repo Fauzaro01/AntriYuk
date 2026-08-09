@@ -57,7 +57,8 @@ class TicketController extends Controller
     public function check(Request $request): View|RedirectResponse
     {
         if ($request->has('ticket_number')) {
-            $ticket = Ticket::where('ticket_number', $request->ticket_number)
+            $ticketNumber = strtoupper(trim($request->ticket_number));
+            $ticket = Ticket::where('ticket_number', $ticketNumber)
                 ->whereDate('created_at', today())
                 ->first();
 

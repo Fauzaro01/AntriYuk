@@ -54,7 +54,12 @@ class ReportController extends Controller
         $hourlyData = $this->getHourlyDistribution($dateRange, $locationId);
 
         // Operator performance
-        $operatorStats = User::where('role', 'operator')
+        $operatorQuery = User::where('role', 'operator');
+        if ($locationId) {
+            $operatorQuery->where('location_id', $locationId);
+        }
+
+        $operatorStats = $operatorQuery
             ->withCount([
                 'servedTickets as tickets_served' => fn ($q) => $q->whereBetween('created_at', [$dateRange[0]->startOfDay(), $dateRange[1]->endOfDay()])->where('status', 'completed'),
             ])
@@ -65,9 +70,14 @@ class ReportController extends Controller
             ->values();
 
         // Feedback summary
+        $feedbackQuery = Feedback::whereBetween('created_at', [$dateRange[0]->startOfDay(), $dateRange[1]->endOfDay()]);
+        if ($locationId) {
+            $feedbackQuery->whereHas('ticket', fn ($q) => $q->where('location_id', $locationId));
+        }
+
         $feedbackStats = [
-            'total' => Feedback::whereBetween('created_at', [$dateRange[0]->startOfDay(), $dateRange[1]->endOfDay()])->count(),
-            'avg_rating' => round(Feedback::whereBetween('created_at', [$dateRange[0]->startOfDay(), $dateRange[1]->endOfDay()])->avg('rating') ?? 0, 1),
+            'total' => (clone $feedbackQuery)->count(),
+            'avg_rating' => round((clone $feedbackQuery)->avg('rating') ?? 0, 1),
         ];
 
         $locations = Location::where('is_active', true)->get();

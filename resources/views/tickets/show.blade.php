@@ -336,6 +336,40 @@
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+
+        // Save ticket to localStorage for "My Tickets" quick access
+        (function saveMyTicket() {
+            try {
+                const ticketData = {
+                    id:       {{ $ticket->id }},
+                    number:   '{{ $ticket->ticket_number }}',
+                    location: '{{ $ticket->location->name }}',
+                    status:   '{{ $ticket->status }}',
+                    url:      '{{ route("tickets.show", $ticket) }}',
+                    date:     new Date().toDateString(),
+                };
+
+                const raw = localStorage.getItem('antriyuk_my_tickets');
+                let tickets = raw ? JSON.parse(raw) : [];
+
+                // Remove outdated entries (older than today) to keep storage lean
+                const today = new Date().toDateString();
+                tickets = tickets.filter(t => t.date === today);
+
+                // Update if exists, otherwise push
+                const idx = tickets.findIndex(t => t.id === ticketData.id);
+                if (idx > -1) {
+                    tickets[idx] = ticketData;
+                } else {
+                    tickets.push(ticketData);
+                }
+
+                // Keep max 20 tickets per day
+                if (tickets.length > 20) tickets = tickets.slice(-20);
+
+                localStorage.setItem('antriyuk_my_tickets', JSON.stringify(tickets));
+            } catch (e) {}
+        })();
     </script>
     @endpush
 </x-layout>

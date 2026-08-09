@@ -144,17 +144,27 @@ class Ticket extends Model
 
     public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null): self
     {
-        $ticket = self::create([
-            'location_id' => $location->id,
-            'service_category_id' => $serviceCategoryId,
-            'ticket_number' => $location->generateTicketNumber(),
-            'customer_name' => $customerName,
-            'customer_phone' => $customerPhone,
-            'status' => 'waiting',
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($location, $customerName, $customerPhone, $serviceCategoryId) {
+            // Count today's tickets with a row lock to prevent race conditions on ticket number generation
+            $todayCount = self::where('location_id', $location->id)
+                ->whereDate('created_at', today())
+                ->lockForUpdate()
+                ->count();
 
-        broadcast(new TicketCreated($ticket))->toOthers();
+            $ticketNumber = sprintf('%s-%03d', $location->code, $todayCount + 1);
 
-        return $ticket;
+            $ticket = self::create([
+                'location_id' => $location->id,
+                'service_category_id' => $serviceCategoryId,
+                'ticket_number' => $ticketNumber,
+                'customer_name' => $customerName,
+                'customer_phone' => $customerPhone,
+                'status' => 'waiting',
+            ]);
+
+            broadcast(new TicketCreated($ticket))->toOthers();
+
+            return $ticket;
+        });
     }
 }

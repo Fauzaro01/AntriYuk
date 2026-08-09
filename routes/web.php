@@ -34,7 +34,9 @@ Route::get('/locations/{location}/display', [LocationController::class, 'display
 // Ticket routes (public)
 Route::get('/tickets/check', [TicketController::class, 'check'])->name('tickets.check');
 Route::get('/locations/{location}/ticket', [TicketController::class, 'create'])->name('tickets.create');
-Route::post('/locations/{location}/ticket', [TicketController::class, 'store'])->name('tickets.store');
+Route::post('/locations/{location}/ticket', [TicketController::class, 'store'])
+    ->middleware('throttle:3,1')
+    ->name('tickets.store');
 Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
 
 // Feedback routes (public)
@@ -43,7 +45,9 @@ Route::post('/tickets/{ticket}/feedback', [FeedbackController::class, 'store'])-
 // Booking routes (public)
 Route::get('/bookings/check', [BookingController::class, 'check'])->name('bookings.check');
 Route::get('/locations/{location}/booking', [BookingController::class, 'create'])->name('bookings.create');
-Route::post('/locations/{location}/booking', [BookingController::class, 'store'])->name('bookings.store');
+Route::post('/locations/{location}/booking', [BookingController::class, 'store'])
+    ->middleware('throttle:5,1')
+    ->name('bookings.store');
 Route::get('/bookings/{booking}', [BookingController::class, 'show'])->name('bookings.show');
 Route::post('/bookings/{booking}/check-in', [BookingController::class, 'checkIn'])->name('bookings.check-in');
 Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel'])->name('bookings.cancel');

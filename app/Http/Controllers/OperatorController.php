@@ -95,17 +95,25 @@ class OperatorController extends Controller
             return back()->with('error', 'Selesaikan tiket saat ini terlebih dahulu.');
         }
 
-        // Get next waiting ticket
-        $nextTicket = Ticket::where('location_id', $user->location_id)
-            ->where('status', 'waiting')
-            ->orderBy('created_at')
-            ->first();
+        // Get next waiting ticket safely using a transaction and lockForUpdate
+        $nextTicket = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $counter) {
+            $ticket = Ticket::where('location_id', $user->location_id)
+                ->where('status', 'waiting')
+                ->orderBy('created_at')
+                ->lockForUpdate()
+                ->first();
+
+            if ($ticket) {
+                $ticket->call($counter, $user);
+            }
+
+            return $ticket;
+        });
 
         if (!$nextTicket) {
             return back()->with('info', 'Tidak ada antrian yang menunggu.');
         }
 
-        $nextTicket->call($counter, $user);
         broadcast(new QueueUpdated($user->location))->toOthers();
 
         return back()->with('success', 'Memanggil tiket ' . $nextTicket->ticket_number);

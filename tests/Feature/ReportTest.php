@@ -90,3 +90,36 @@ test('reports show operator performance', function () {
     $response->assertStatus(200);
     $response->assertSee('Operator Test');
 });
+
+test('reports filter feedback statistics and operator performance by location', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    
+    $location1 = Location::factory()->create(['code' => 'LC1']);
+    $location2 = Location::factory()->create(['code' => 'LC2']);
+    
+    $operator1 = User::factory()->create([
+        'role' => 'operator',
+        'name' => 'Operator Satu',
+        'location_id' => $location1->id,
+    ]);
+    
+    $operator2 = User::factory()->create([
+        'role' => 'operator',
+        'name' => 'Operator Dua',
+        'location_id' => $location2->id,
+    ]);
+
+    $ticket1 = Ticket::factory()->create(['location_id' => $location1->id, 'status' => 'completed', 'served_by' => $operator1->id]);
+    Feedback::factory()->create(['ticket_id' => $ticket1->id, 'rating' => 5]);
+
+    $ticket2 = Ticket::factory()->create(['location_id' => $location2->id, 'status' => 'completed', 'served_by' => $operator2->id]);
+    Feedback::factory()->create(['ticket_id' => $ticket2->id, 'rating' => 2]);
+
+    $response = $this->actingAs($admin)->get("/admin/reports?location_id={$location1->id}");
+
+    $response->assertStatus(200);
+    $response->assertSee('5'); // Location 1 feedback rating
+    $response->assertSee('Operator Satu');
+    $response->assertDontSee('Operator Dua');
+});
+

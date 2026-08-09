@@ -77,14 +77,35 @@ class Location extends Model
         return sprintf('%s-%03d', $this->code, $todayCount);
     }
 
+    public function getCurrentAverageServiceTime(): int
+    {
+        $recentCompleted = $this->todayTickets()
+            ->where('status', 'completed')
+            ->whereNotNull('service_time')
+            ->latest('completed_at')
+            ->take(10)
+            ->get();
+
+        if ($recentCompleted->isEmpty()) {
+            return $this->average_service_time;
+        }
+
+        $averageSeconds = $recentCompleted->avg('service_time');
+
+        // Convert seconds to minutes, minimum 1 minute
+        return max(1, (int) round($averageSeconds / 60));
+    }
+
     public function getEstimatedWaitTime(int $position): int
     {
         $activeCounters = $this->activeCounters()->count();
+        $avgServiceTime = $this->getCurrentAverageServiceTime();
+
         if ($activeCounters === 0) {
-            return $position * $this->average_service_time;
+            return $position * $avgServiceTime;
         }
 
-        return (int) ceil(($position / $activeCounters) * $this->average_service_time);
+        return (int) ceil(($position / $activeCounters) * $avgServiceTime);
     }
 
     public function isOpen(): bool

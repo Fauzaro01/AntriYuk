@@ -94,6 +94,18 @@ test('can check ticket by number', function () {
     $response->assertRedirect("/tickets/{$ticket->id}");
 });
 
+test('can check ticket by number with lowercase and whitespace', function () {
+    $location = Location::factory()->create(['code' => 'CS3']);
+    $ticket = Ticket::factory()->create([
+        'location_id' => $location->id,
+        'ticket_number' => 'CS-099',
+    ]);
+
+    $response = $this->get('/tickets/check?ticket_number=%20cs-099%20');
+
+    $response->assertRedirect("/tickets/{$ticket->id}");
+});
+
 test('displays location as closed outside operating hours', function () {
     $location = Location::factory()->create([
         'open_time' => '23:00',
@@ -108,3 +120,41 @@ test('displays location as closed outside operating hours', function () {
         $this->assertTrue(true);
     }
 });
+
+test('location calculates estimated wait time dynamically based on completed tickets today', function () {
+    $location = Location::factory()->create([
+        'average_service_time' => 10, // static default
+    ]);
+
+    // Active counters count = 2
+    \App\Models\Counter::factory()->create(['location_id' => $location->id, 'is_active' => true]);
+    \App\Models\Counter::factory()->create(['location_id' => $location->id, 'is_active' => true]);
+
+    // Scenario 1: No completed tickets today
+    // Position 4 waiting ticket should use static default: 10 minutes.
+    // ceil(4 / 2) * 10 = 2 * 10 = 20 minutes
+    expect($location->getEstimatedWaitTime(4))->toBe(20);
+
+    // Scenario 2: With completed tickets today
+    // Let's create some completed tickets today with service_time
+    // Ticket 1: 180 seconds (3 minutes)
+    // Ticket 2: 420 seconds (7 minutes)
+    // Average = (3 + 7) / 2 = 5 minutes
+    Ticket::factory()->completed()->create([
+        'location_id' => $location->id,
+        'created_at' => now(),
+        'service_time' => 180, // 3 minutes
+    ]);
+
+    Ticket::factory()->completed()->create([
+        'location_id' => $location->id,
+        'created_at' => now(),
+        'service_time' => 420, // 7 minutes
+    ]);
+
+    // Position 4 waiting ticket should now use dynamic average: 5 minutes.
+    // ceil(4 / 2) * 5 = 2 * 5 = 10 minutes
+    expect($location->getCurrentAverageServiceTime())->toBe(5);
+    expect($location->getEstimatedWaitTime(4))->toBe(10);
+});
+
