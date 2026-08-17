@@ -44,6 +44,22 @@
             </div>
         </div>
 
+        {{-- SUPERVISOR ALERT BANNER --}}
+        <div id="supervisor-alert" class="hidden bg-red-600 border-b border-red-500 z-30 relative">
+            <div class="max-w-screen-2xl mx-auto px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl animate-bounce">🚨</span>
+                    <div>
+                        <p class="text-white font-bold text-sm" id="supervisor-alert-message">Operator memerlukan bantuan supervisor!</p>
+                        <p class="text-red-200 text-xs" id="supervisor-alert-time"></p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('supervisor-alert').classList.add('hidden')" class="text-red-200 hover:text-white transition-colors text-sm font-semibold px-3 py-1.5 bg-red-700 hover:bg-red-800 rounded-lg">
+                    Tutup
+                </button>
+            </div>
+        </div>
+
         {{-- GLOBAL STATS BAR --}}
         <div class="bg-slate-900/50 border-b border-white/5">
             <div class="max-w-screen-2xl mx-auto px-6 py-4">
@@ -316,6 +332,37 @@
         }
 
         window.monitorApp = monitorApp;
+
+        // Listen for supervisor requests via Laravel Echo
+        if (typeof window.Echo !== 'undefined') {
+            window.Echo.channel('admin.alerts')
+                .listen('.supervisor.requested', (data) => {
+                    const banner = document.getElementById('supervisor-alert');
+                    const msg = document.getElementById('supervisor-alert-message');
+                    const time = document.getElementById('supervisor-alert-time');
+
+                    msg.textContent = `🚨 ${data.operatorName} di ${data.counterName} memerlukan bantuan supervisor: "${data.message}"`;
+                    time.textContent = new Date().toLocaleTimeString('id-ID');
+                    banner.classList.remove('hidden');
+
+                    // Play urgent alert sound
+                    try {
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        [523, 659, 784, 659, 523].forEach((freq, i) => {
+                            const osc = ctx.createOscillator();
+                            const gain = ctx.createGain();
+                            osc.type = 'square';
+                            osc.frequency.value = freq;
+                            gain.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.1);
+                            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.1);
+                            osc.connect(gain);
+                            gain.connect(ctx.destination);
+                            osc.start(ctx.currentTime + i * 0.1);
+                            osc.stop(ctx.currentTime + i * 0.1 + 0.1);
+                        });
+                    } catch(e) {}
+                });
+        }
     </script>
     <style>
         #global-waiting, #global-completed, #global-priority, #global-operators {

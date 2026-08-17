@@ -17,6 +17,8 @@ class Ticket extends Model
     protected $fillable = [
         'location_id',
         'service_category_id',
+        'transferred_from_category_id',
+        'transfer_reason',
         'counter_id',
         'served_by',
         'ticket_number',
@@ -61,6 +63,11 @@ class Ticket extends Model
     public function serviceCategory(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class);
+    }
+
+    public function transferredFromCategory(): BelongsTo
+    {
+        return $this->belongsTo(ServiceCategory::class, 'transferred_from_category_id');
     }
 
     public function feedback(): HasOne
@@ -154,6 +161,67 @@ class Ticket extends Model
         ]);
 
         broadcast(new TicketStatusChanged($this))->toOthers();
+    }
+
+    public function transferToCategory(ServiceCategory $newCategory, ?string $reason = null): void
+    {
+        $oldCategoryId = $this->service_category_id;
+
+        $this->update([
+            'transferred_from_category_id' => $oldCategoryId,
+            'service_category_id' => $newCategory->id,
+            'transfer_reason' => $reason,
+            'status' => 'waiting',
+            'counter_id' => null,
+            'served_by' => null,
+            'called_at' => null,
+            'served_at' => null,
+        ]);
+
+        broadcast(new TicketStatusChanged($this))->toOthers();
+    }
+
+    public function getWaitDurationMinutesAttribute(): int
+    {
+        if ($this->called_at) {
+            return (int) $this->created_at->diffInMinutes($this->called_at);
+        }
+
+        if ($this->completed_at) {
+            return (int) $this->created_at->diffInMinutes($this->completed_at);
+        }
+
+        return (int) $this->created_at->diffInMinutes(now());
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        if ($this->status !== 'waiting') {
+            return false;
+        }
+
+        $threshold = $this->location->sla_waiting_threshold_minutes ?? 15;
+        return $this->wait_duration_minutes >= $threshold;
+    }
+
+    public function getSlaStatusAttribute(): string
+    {
+        if ($this->status !== 'waiting') {
+            return 'normal';
+        }
+
+        $threshold = $this->location->sla_waiting_threshold_minutes ?? 15;
+        $minutes = $this->wait_duration_minutes;
+
+        if ($minutes >= $threshold) {
+            return 'overdue';
+        }
+
+        if ($minutes >= floor($threshold * 0.75)) {
+            return 'warning';
+        }
+
+        return 'normal';
     }
 
     public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null, bool $isPriority = false, ?string $priorityReason = null): self

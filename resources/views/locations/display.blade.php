@@ -207,5 +207,30 @@
             document.getElementById('waiting-count').textContent = '{{ $waiting->count() }} antrian menunggu';
         });
     </script>
+
+    <style>
+    @keyframes marquee {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+    }
+    .animate-marquee {
+        display: inline-block;
+        white-space: nowrap;
+        animation: marquee 28s linear infinite;
+    }
+    </style>
+
+    <!-- Running Text Footer Bar -->
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900/95 border-t border-slate-700 text-white py-3 px-6 flex items-center z-40 shadow-2xl backdrop-blur-md">
+        <div class="bg-blue-600 text-white text-xs font-black uppercase px-3 py-1 rounded-lg flex items-center gap-1.5 shadow-md flex-shrink-0 mr-4">
+            <span class="w-2 h-2 bg-white rounded-full animate-ping"></span>
+            INFO LOKASI
+        </div>
+        <div class="overflow-hidden w-full relative flex items-center">
+            <div class="animate-marquee font-medium text-lg text-blue-100">
+                {{ $location->running_text ?? 'Selamat Datang di ' . $location->name . ' — Mohon perhatikan nomor antrian Anda di layar display. Harap menyiapkan dokumen pendukung sebelum dipanggil ke loket.' }}
+            </div>
+        </div>
+    </div>
 </body>
 </html>

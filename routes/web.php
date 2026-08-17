@@ -76,12 +76,17 @@ Route::middleware(['auth', EnsureUserIsOperator::class])->prefix('operator')->gr
     Route::post('/tickets/{ticket}/complete', [OperatorController::class, 'completeTicket'])->name('operator.complete');
     Route::post('/tickets/{ticket}/skip', [OperatorController::class, 'skipTicket'])->name('operator.skip');
     Route::post('/tickets/{ticket}/recall', [OperatorController::class, 'recallTicket'])->name('operator.recall');
+    Route::post('/tickets/{ticket}/transfer', [OperatorController::class, 'transferTicket'])->name('operator.transfer');
+    Route::post('/request-supervisor', [OperatorController::class, 'requestSupervisor'])->name('operator.request-supervisor');
 });
 
 // Admin routes
 Route::middleware(['auth', EnsureUserIsAdmin::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/realtime-stats', [AdminController::class, 'realtimeStats'])->name('admin.realtime-stats');
+
+    // Audit Logs
+    Route::get('/audit-logs', [AdminController::class, 'auditLogs'])->name('admin.audit-logs');
 
     // Location management
     Route::get('/locations', [AdminController::class, 'locations'])->name('admin.locations');

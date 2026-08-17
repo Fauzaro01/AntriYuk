@@ -80,6 +80,24 @@
                             @error('close_time')<p class="text-red-600 text-sm mt-1">{{ $message }}</p>@enderror
                         </div>
                     </div>
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2 sm:col-span-1">
+                            <label for="sla_waiting_threshold_minutes" class="block text-sm font-medium text-slate-700 mb-1">Batas SLA Menunggu (menit) *</label>
+                            <input type="number" id="sla_waiting_threshold_minutes" name="sla_waiting_threshold_minutes" value="{{ old('sla_waiting_threshold_minutes', 15) }}" required min="1" max="120"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <p class="text-xs text-slate-500 mt-1">Peringatan jika pelanggan menunggu lebih dari menit ini.</p>
+                            @error('sla_waiting_threshold_minutes')<p class="text-red-600 text-sm mt-1">{{ $message }}</p>@enderror
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="running_text" class="block text-sm font-medium text-slate-700 mb-1">Teks Berjalan Display TV (Running Text)</label>
+                        <textarea id="running_text" name="running_text" rows="2"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Pengumuman khusus yang tampil di bagian bawah TV ruang tunggu">{{ old('running_text') }}</textarea>
+                        @error('running_text')<p class="text-red-600 text-sm mt-1">{{ $message }}</p>@enderror
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-4 mt-8 pt-6 border-t border-slate-200">

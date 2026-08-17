@@ -166,7 +166,7 @@
                                         @endif
                                     </div>
 
-                                    <div class="grid grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-2 gap-4 mb-4">
                                         @if($currentTicket->status === 'calling')
                                             <form method="POST" action="{{ route('operator.start-serving', $currentTicket) }}">
                                                 @csrf
@@ -209,6 +209,36 @@
                                             </button>
                                         </form>
                                     </div>
+
+                                    @if(isset($serviceCategories) && $serviceCategories->count() > 0)
+                                        <!-- Transfer Section -->
+                                        <div x-data="{ openTransfer: false }" class="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                                            <button @click="openTransfer = !openTransfer" type="button" class="w-full flex items-center justify-center bg-slate-700 hover:bg-slate-800 text-white py-3 rounded-xl font-medium transition-colors text-sm">
+                                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                </svg>
+                                                Transfer Antrian ke Kategori Lain
+                                            </button>
+
+                                            <div x-show="openTransfer" x-cloak class="mt-4 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700">
+                                                <form method="POST" action="{{ route('operator.transfer', $currentTicket) }}">
+                                                    @csrf
+                                                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Pilih Kategori Tujuan:</label>
+                                                    <select name="service_category_id" required class="w-full text-sm border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg mb-3">
+                                                        @foreach($serviceCategories as $cat)
+                                                            @if($cat->id !== $currentTicket->service_category_id)
+                                                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                                            @endif
+                                                        @endforeach
+                                                    </select>
+                                                    <input type="text" name="transfer_reason" placeholder="Alasan transfer (opsional)" class="w-full text-sm border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg mb-3">
+                                                    <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-lg transition-colors">
+                                                        Konfirmasi Transfer Tiket
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
                                 @else
                                     <div class="text-center py-12">
                                         <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -262,11 +292,19 @@
                                                     {{ $loop->iteration }}
                                                 </span>
                                                 <div>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="font-bold text-slate-900 dark:text-white text-lg">{{ $ticket->ticket_number }}</span>
-                                                        @if($ticket->is_priority)
-                                                            <span class="text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold px-2 py-0.5 rounded-full">🚨 {{ match($ticket->priority_reason) { 'elderly' => 'Lansia', 'pregnant' => 'Hamil', 'disability' => 'Disabilitas', default => 'Prioritas' } }}</span>
-                                                        @endif
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                         <span class="font-bold text-slate-900 dark:text-white text-lg">{{ $ticket->ticket_number }}</span>
+                                                         @if($ticket->is_priority)
+                                                             <span class="text-xs bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold px-2 py-0.5 rounded-full">🚨 {{ match($ticket->priority_reason) { 'elderly' => 'Lansia', 'pregnant' => 'Hamil', 'disability' => 'Disabilitas', default => 'Prioritas' } }}</span>
+                                                         @endif
+                                                         @if($ticket->sla_status === 'overdue')
+                                                             <span class="text-xs bg-red-600 text-white font-bold px-2 py-0.5 rounded-full animate-pulse">⚠️ SLA Overdue ({{ $ticket->wait_duration_minutes }}m)</span>
+                                                         @elseif($ticket->sla_status === 'warning')
+                                                             <span class="text-xs bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full">⏳ SLA Alert ({{ $ticket->wait_duration_minutes }}m)</span>
+                                                         @endif
+                                                         @if($ticket->transferredFromCategory)
+                                                             <span class="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full">↩️ Ditolak/Ditransfer dari {{ $ticket->transferredFromCategory->name }}</span>
+                                                         @endif
                                                     </div>
                                                     @if($ticket->customer_name)
                                                         <span class="block text-slate-500 dark:text-slate-400 text-sm">{{ $ticket->customer_name }}</span>
@@ -336,10 +374,41 @@
                                 </svg>
                                 Lihat Halaman Publik
                             </a>
+
+                            <!-- Tombol Darurat Supervisor -->
+                            <button id="btn-supervisor" onclick="document.getElementById('modal-supervisor').classList.remove('hidden')" class="flex items-center justify-center w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-semibold transition-colors shadow-sm">
+                                🚨 Minta Bantuan Supervisor
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Darurat Supervisor -->
+    <div id="modal-supervisor" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl border-2 border-red-200 dark:border-red-800">
+            <div class="text-center mb-6">
+                <div class="text-5xl mb-3">🚨</div>
+                <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">Minta Bantuan Supervisor</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">Pesan darurat akan dikirimkan secara real-time kepada supervisor.</p>
+            </div>
+            <form method="POST" action="{{ route('operator.request-supervisor') }}">
+                @csrf
+                <div class="mb-4">
+                    <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Alasan / Keterangan</label>
+                    <textarea name="reason" rows="3" placeholder="Contoh: Terdapat pelanggan komplain / Sistem error di loket..." class="w-full text-sm border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:text-white rounded-xl focus:ring-red-500 focus:border-red-500"></textarea>
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-colors">
+                        🚨 Kirim Permintaan Bantuan
+                    </button>
+                    <button type="button" onclick="document.getElementById('modal-supervisor').classList.add('hidden')" class="flex-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-300 font-semibold py-3 rounded-xl transition-colors">
+                        Batal
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

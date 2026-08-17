@@ -18,6 +18,8 @@ class Location extends Model
         'is_active',
         'average_service_time',
         'max_daily_tickets',
+        'running_text',
+        'sla_waiting_threshold_minutes',
         'open_time',
         'close_time',
     ];
@@ -28,6 +30,7 @@ class Location extends Model
             'is_active' => 'boolean',
             'average_service_time' => 'integer',
             'max_daily_tickets' => 'integer',
+            'sla_waiting_threshold_minutes' => 'integer',
             'open_time' => 'datetime:H:i',
             'close_time' => 'datetime:H:i',
         ];

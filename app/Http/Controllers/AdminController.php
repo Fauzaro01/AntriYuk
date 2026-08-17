@@ -96,6 +96,8 @@ class AdminController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'average_service_time' => ['required', 'integer', 'min:1', 'max:120'],
             'max_daily_tickets' => ['nullable', 'integer', 'min:1'],
+            'running_text' => ['nullable', 'string', 'max:500'],
+            'sla_waiting_threshold_minutes' => ['required', 'integer', 'min:1', 'max:120'],
             'open_time' => ['required', 'date_format:H:i'],
             'close_time' => ['required', 'date_format:H:i', 'after:open_time'],
         ]);
@@ -120,6 +122,8 @@ class AdminController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'average_service_time' => ['required', 'integer', 'min:1', 'max:120'],
             'max_daily_tickets' => ['nullable', 'integer', 'min:1'],
+            'running_text' => ['nullable', 'string', 'max:500'],
+            'sla_waiting_threshold_minutes' => ['required', 'integer', 'min:1', 'max:120'],
             'open_time' => ['required', 'date_format:H:i'],
             'close_time' => ['required', 'date_format:H:i', 'after:open_time'],
             'is_active' => ['boolean'],
@@ -242,6 +246,24 @@ class AdminController extends Controller
             ->get();
 
         return view('admin.monitor', compact('locations'));
+    }
+
+    public function auditLogs(Request $request): View
+    {
+        $query = \App\Models\AuditLog::with('user', 'location')->latest();
+
+        if ($request->filled('location_id')) {
+            $query->where('location_id', $request->location_id);
+        }
+
+        if ($request->filled('action')) {
+            $query->where('action', 'like', '%' . $request->action . '%');
+        }
+
+        $logs = $query->paginate(20)->withQueryString();
+        $locations = Location::all();
+
+        return view('admin.audit-logs.index', compact('logs', 'locations'));
     }
 }
 

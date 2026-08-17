@@ -17,6 +17,9 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <a href="{{ route('admin.audit-logs') }}" class="flex items-center gap-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            📜 Audit Log
+                        </a>
                         <a href="{{ route('admin.monitor') }}" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
                             <span class="w-2 h-2 bg-emerald-300 rounded-full animate-pulse"></span>
                             Live Monitor

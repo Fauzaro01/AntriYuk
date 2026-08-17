@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\QueueUpdated;
+use App\Models\AuditLog;
 use App\Models\Counter;
 use App\Models\Location;
 use App\Models\Ticket;
@@ -32,6 +33,7 @@ class OperatorController extends Controller
         ];
 
         $counters = $location->counters()->where('is_active', true)->with('currentOperator')->get();
+        $serviceCategories = $location->serviceCategories()->where('is_active', true)->get();
 
         return view('operator.dashboard', compact(
             'location',
@@ -39,7 +41,8 @@ class OperatorController extends Controller
             'currentTicket',
             'waitingTickets',
             'todayStats',
-            'counters'
+            'counters',
+            'serviceCategories'
         ));
     }
 
@@ -114,6 +117,12 @@ class OperatorController extends Controller
             return back()->with('info', 'Tidak ada antrian yang menunggu.');
         }
 
+        AuditLog::log('ticket.call', 'Memanggil tiket ' . $nextTicket->ticket_number . ' ke ' . $counter->name, [
+            'ticket_id' => $nextTicket->id,
+            'ticket_number' => $nextTicket->ticket_number,
+            'counter_id' => $counter->id,
+        ]);
+
         broadcast(new QueueUpdated($user->location))->toOthers();
 
         return back()->with('success', 'Memanggil tiket ' . $nextTicket->ticket_number);
@@ -133,6 +142,11 @@ class OperatorController extends Controller
 
         $ticket->startServing();
 
+        AuditLog::log('ticket.start_serving', 'Mulai melayani tiket ' . $ticket->ticket_number, [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+        ]);
+
         return back()->with('success', 'Mulai melayani tiket ' . $ticket->ticket_number);
     }
 
@@ -149,6 +163,13 @@ class OperatorController extends Controller
         }
 
         $ticket->complete();
+
+        AuditLog::log('ticket.complete', 'Menyelesaikan layanan tiket ' . $ticket->ticket_number, [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+            'service_time' => $ticket->service_time,
+        ]);
+
         broadcast(new QueueUpdated($user->location))->toOthers();
 
         return back()->with('success', 'Tiket ' . $ticket->ticket_number . ' selesai.');
@@ -167,6 +188,12 @@ class OperatorController extends Controller
         }
 
         $ticket->skip();
+
+        AuditLog::log('ticket.skip', 'Melewati tiket ' . $ticket->ticket_number, [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+        ]);
+
         broadcast(new QueueUpdated($user->location))->toOthers();
 
         return back()->with('info', 'Tiket ' . $ticket->ticket_number . ' dilewati.');
@@ -188,6 +215,61 @@ class OperatorController extends Controller
         // Re-broadcast the call event
         $ticket->call($counter, $user);
 
+        AuditLog::log('ticket.recall', 'Memanggil ulang tiket ' . $ticket->ticket_number, [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+        ]);
+
         return back()->with('success', 'Memanggil ulang tiket ' . $ticket->ticket_number);
+    }
+
+    public function transferTicket(Request $request, Ticket $ticket): RedirectResponse
+    {
+        $user = auth()->user();
+
+        if ($ticket->location_id !== $user->location_id) {
+            return back()->with('error', 'Tiket dari lokasi lain.');
+        }
+
+        $validated = $request->validate([
+            'service_category_id' => ['required', 'exists:service_categories,id'],
+            'transfer_reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $newCategory = \App\Models\ServiceCategory::findOrFail($validated['service_category_id']);
+
+        $ticket->transferToCategory($newCategory, $validated['transfer_reason'] ?? null);
+
+        AuditLog::log('ticket.transfer', 'Mentransfer tiket ' . $ticket->ticket_number . ' ke kategori ' . $newCategory->name, [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+            'new_category' => $newCategory->name,
+            'reason' => $validated['transfer_reason'] ?? null,
+        ]);
+
+        broadcast(new QueueUpdated($user->location))->toOthers();
+
+        return back()->with('success', 'Tiket ' . $ticket->ticket_number . ' berhasil dipindahkan ke ' . $newCategory->name);
+    }
+
+    public function requestSupervisor(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+        $counter = $user->operatingCounter;
+
+        if (!$counter) {
+            return back()->with('error', 'Anda belum memilih loket.');
+        }
+
+        $reason = $request->input('reason', 'Memerlukan bantuan supervisor.');
+
+        broadcast(new \App\Events\SupervisorRequested($user, $counter, $reason))->toOthers();
+
+        AuditLog::log('supervisor.request', 'Meminta bantuan supervisor di ' . $counter->name . ': ' . $reason, [
+            'counter_id' => $counter->id,
+            'reason' => $reason,
+        ]);
+
+        return back()->with('success', 'Permintaan bantuan supervisor telah dikirimkan secara real-time.');
     }
 }

@@ -27,6 +27,7 @@ test('admin can create location', function () {
         'code' => 'NEW',
         'description' => 'Test location',
         'average_service_time' => 10,
+        'sla_waiting_threshold_minutes' => 15,
         'open_time' => '08:00',
         'close_time' => '17:00',
     ]);
@@ -46,6 +47,7 @@ test('admin can update location', function () {
         'name' => 'New Name',
         'code' => $location->code,
         'average_service_time' => 5,
+        'sla_waiting_threshold_minutes' => 15,
         'open_time' => '09:00',
         'close_time' => '18:00',
     ]);

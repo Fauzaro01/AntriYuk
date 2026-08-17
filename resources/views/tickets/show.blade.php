@@ -247,25 +247,49 @@
                     </div>
 
                     <!-- Download & View buttons -->
-                    <div class="flex flex-col sm:flex-row gap-3">
+                    @php
+                        $waText = rawurlencode("Halo, ini nomor tiket antrian saya di " . $ticket->location->name . ": *" . $ticket->ticket_number . "*\n\nLihat status antrian live di:\n" . request()->fullUrl());
+                        $waUrl = "https://api.whatsapp.com/send?text=" . $waText;
+                    @endphp
+
+                    <div class="flex flex-col sm:flex-row gap-3 mb-3">
                         <button
                             id="btn-download-ticket"
                             onclick="downloadTicketCard()"
-                            class="flex-1 flex items-center justify-center gap-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95"
+                            class="flex-1 flex items-center justify-center gap-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm"
                         >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            Simpan Tiket
+                            Simpan Gambar
                         </button>
 
-                        <a href="{{ route('locations.show', $ticket->location) }}" class="flex-1 flex items-center justify-center gap-2 border-2 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-3 px-4 rounded-xl font-semibold transition-all">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        <a href="{{ route('tickets.print', $ticket) }}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
-                            Lihat Antrian
+                            Cetak Struk Thermal
                         </a>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="{{ $waUrl }}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+                            </svg>
+                            Kirim ke WA
+                        </a>
+
+                        <button
+                            id="btn-web-push"
+                            onclick="enableWebPushNotification()"
+                            class="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            Notifikasi HP
+                        </button>
                     </div>
 
                     @if($ticket->status === 'waiting')
@@ -502,14 +526,45 @@
                 link.click();
 
                 btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Tersimpan!';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
             } catch (err) {
-                console.error('Download error:', err);
+                console.error('Download ticket card failed:', err);
+            } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+            }
+        }
+
+        // Register Service Worker for Web Push
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.warn('SW registration skipped:', err);
+            });
+        }
+
+        async function enableWebPushNotification() {
+            const btn = document.getElementById('btn-web-push');
+            if (!('Notification' in window)) {
+                alert('Browser Anda tidak mendukung notifikasi push.');
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-emerald-600');
+                btn.innerHTML = '✓ Notifikasi HP Aktif';
+                btn.disabled = true;
+
+                if ('serviceWorker' in navigator) {
+                    const reg = await navigator.serviceWorker.ready;
+                    reg.showNotification('🎫 Notifikasi Tiket Aktif!', {
+                        body: 'Anda akan menerima pemberitahuan otomatis saat giliran tiket {{ $ticket->ticket_number }} tiba.',
+                        icon: '/favicon.ico',
+                        data: window.location.href
+                    });
+                }
+            } else {
+                alert('Izin notifikasi tidak diberikan.');
             }
         }
     </script>
