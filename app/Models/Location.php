@@ -17,6 +17,9 @@ class Location extends Model
         'address',
         'is_active',
         'average_service_time',
+        'max_daily_tickets',
+        'running_text',
+        'sla_waiting_threshold_minutes',
         'open_time',
         'close_time',
     ];
@@ -26,6 +29,8 @@ class Location extends Model
         return [
             'is_active' => 'boolean',
             'average_service_time' => 'integer',
+            'max_daily_tickets' => 'integer',
+            'sla_waiting_threshold_minutes' => 'integer',
             'open_time' => 'datetime:H:i',
             'close_time' => 'datetime:H:i',
         ];
@@ -63,7 +68,7 @@ class Location extends Model
 
     public function waitingTickets(): HasMany
     {
-        return $this->tickets()->where('status', 'waiting')->orderBy('created_at');
+        return $this->tickets()->where('status', 'waiting')->orderByDesc('is_priority')->orderBy('created_at');
     }
 
     public function todayTickets(): HasMany
@@ -77,14 +82,69 @@ class Location extends Model
         return sprintf('%s-%03d', $this->code, $todayCount);
     }
 
+    public function getCurrentAverageServiceTime(): int
+    {
+        $recentCompleted = $this->todayTickets()
+            ->where('status', 'completed')
+            ->whereNotNull('service_time')
+            ->latest('completed_at')
+            ->take(10)
+            ->get();
+
+        if ($recentCompleted->isEmpty()) {
+            return $this->average_service_time;
+        }
+
+        $averageSeconds = $recentCompleted->avg('service_time');
+
+        // Convert seconds to minutes, minimum 1 minute
+        return max(1, (int) round($averageSeconds / 60));
+    }
+
+    public function getCurrentAverageServiceTimeForCategory(?int $categoryId): int
+    {
+        if (is_null($categoryId)) {
+            return $this->getCurrentAverageServiceTime();
+        }
+
+        $recentCompleted = $this->todayTickets()
+            ->where('service_category_id', $categoryId)
+            ->where('status', 'completed')
+            ->whereNotNull('service_time')
+            ->latest('completed_at')
+            ->take(10)
+            ->get();
+
+        if ($recentCompleted->isEmpty()) {
+            return $this->average_service_time;
+        }
+
+        $averageSeconds = $recentCompleted->avg('service_time');
+        return max(1, (int) round($averageSeconds / 60));
+    }
+
     public function getEstimatedWaitTime(int $position): int
     {
         $activeCounters = $this->activeCounters()->count();
+        $avgServiceTime = $this->getCurrentAverageServiceTime();
+
         if ($activeCounters === 0) {
-            return $position * $this->average_service_time;
+            return $position * $avgServiceTime;
         }
 
-        return (int) ceil(($position / $activeCounters) * $this->average_service_time);
+        return (int) ceil(($position / $activeCounters) * $avgServiceTime);
+    }
+
+    public function getEstimatedWaitTimeForCategory(int $position, ?int $categoryId): int
+    {
+        $activeCounters = $this->activeCounters()->count();
+        $avgServiceTime = $this->getCurrentAverageServiceTimeForCategory($categoryId);
+
+        if ($activeCounters === 0) {
+            return $position * $avgServiceTime;
+        }
+
+        return (int) ceil(($position / $activeCounters) * $avgServiceTime);
     }
 
     public function isOpen(): bool
@@ -95,5 +155,14 @@ class Location extends Model
 
         $now = now()->format('H:i');
         return $now >= $this->open_time->format('H:i') && $now <= $this->close_time->format('H:i');
+    }
+
+    public function isQueueFull(): bool
+    {
+        if (is_null($this->max_daily_tickets)) {
+            return false;
+        }
+
+        return $this->todayTickets()->count() >= $this->max_daily_tickets;
     }
 }

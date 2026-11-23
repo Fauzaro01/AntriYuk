@@ -7,6 +7,7 @@ use App\Models\Location;
 use App\Models\ServiceCategory;
 use App\Models\Ticket;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -27,9 +28,51 @@ class AdminController extends Controller
         $locations = Location::withCount([
             'tickets as today_tickets_count' => fn ($q) => $q->whereDate('created_at', today()),
             'tickets as waiting_count' => fn ($q) => $q->where('status', 'waiting'),
+            'tickets as completed_count' => fn ($q) => $q->whereDate('created_at', today())->where('status', 'completed'),
         ])->get();
 
-        return view('admin.dashboard', compact('stats', 'locations'));
+        // Chart 1: Donut — today's ticket status distribution
+        $todayTickets = Ticket::whereDate('created_at', today())->get();
+        $donutData = [
+            'completed' => $todayTickets->where('status', 'completed')->count(),
+            'waiting'   => $todayTickets->whereIn('status', ['waiting', 'calling', 'serving'])->count(),
+            'skipped'   => $todayTickets->where('status', 'skipped')->count(),
+            'cancelled' => $todayTickets->where('status', 'cancelled')->count(),
+        ];
+
+        // Chart 2: Hourly bar — tickets created per hour today (07:00–18:00)
+        $hourlyData = array_fill(7, 12, 0); // hours 7..18
+        foreach ($todayTickets as $t) {
+            $h = (int) $t->created_at->format('G');
+            if ($h >= 7 && $h <= 18) {
+                $hourlyData[$h]++;
+            }
+        }
+        $hourlyLabels = array_map(fn($h) => sprintf('%02d:00', $h), range(7, 18));
+        $hourlyValues = array_values($hourlyData);
+
+        // Chart 3: Per-location bar — completed vs waiting
+        $locationChartData = [
+            'labels'    => $locations->pluck('name')->toArray(),
+            'completed' => $locations->pluck('completed_count')->toArray(),
+            'waiting'   => $locations->pluck('waiting_count')->toArray(),
+        ];
+
+        return view('admin.dashboard', compact('stats', 'locations', 'donutData', 'hourlyLabels', 'hourlyValues', 'locationChartData'));
+    }
+
+    // Realtime stats endpoint for dashboard
+    public function realtimeStats(): \Illuminate\Http\JsonResponse
+    {
+        $stats = [
+            'total_locations' => Location::count(),
+            'active_locations' => Location::where('is_active', true)->count(),
+            'total_operators' => User::where('role', 'operator')->count(),
+            'today_tickets' => Ticket::whereDate('created_at', today())->count(),
+            'today_completed' => Ticket::whereDate('created_at', today())->where('status', 'completed')->count(),
+            'today_waiting' => Ticket::where('status', 'waiting')->count(),
+        ];
+        return response()->json($stats);
     }
 
     // Location Management
@@ -52,6 +95,9 @@ class AdminController extends Controller
             'description' => ['nullable', 'string'],
             'address' => ['nullable', 'string', 'max:255'],
             'average_service_time' => ['required', 'integer', 'min:1', 'max:120'],
+            'max_daily_tickets' => ['nullable', 'integer', 'min:1'],
+            'running_text' => ['nullable', 'string', 'max:500'],
+            'sla_waiting_threshold_minutes' => ['required', 'integer', 'min:1', 'max:120'],
             'open_time' => ['required', 'date_format:H:i'],
             'close_time' => ['required', 'date_format:H:i', 'after:open_time'],
         ]);
@@ -75,6 +121,9 @@ class AdminController extends Controller
             'description' => ['nullable', 'string'],
             'address' => ['nullable', 'string', 'max:255'],
             'average_service_time' => ['required', 'integer', 'min:1', 'max:120'],
+            'max_daily_tickets' => ['nullable', 'integer', 'min:1'],
+            'running_text' => ['nullable', 'string', 'max:500'],
+            'sla_waiting_threshold_minutes' => ['required', 'integer', 'min:1', 'max:120'],
             'open_time' => ['required', 'date_format:H:i'],
             'close_time' => ['required', 'date_format:H:i', 'after:open_time'],
             'is_active' => ['boolean'],
@@ -178,4 +227,45 @@ class AdminController extends Controller
         $category->delete();
         return back()->with('success', 'Kategori layanan berhasil dihapus.');
     }
+
+    // Live Monitor
+    public function monitor(): View
+    {
+        $locations = Location::where('is_active', true)
+            ->with([
+                'counters' => fn ($q) => $q->where('is_active', true)->with('currentOperator'),
+                'tickets' => fn ($q) => $q->whereDate('created_at', today())
+                    ->whereIn('status', ['waiting', 'calling', 'serving']),
+            ])
+            ->withCount([
+                'tickets as today_total'     => fn ($q) => $q->whereDate('created_at', today()),
+                'tickets as today_completed' => fn ($q) => $q->whereDate('created_at', today())->where('status', 'completed'),
+                'tickets as today_waiting'   => fn ($q) => $q->where('status', 'waiting'),
+                'tickets as today_priority'  => fn ($q) => $q->whereDate('created_at', today())->where('is_priority', true)->where('status', 'waiting'),
+            ])
+            ->get();
+
+        return view('admin.monitor', compact('locations'));
+    }
+
+    public function auditLogs(Request $request): View
+    {
+        $query = \App\Models\AuditLog::with('user', 'location')->latest();
+
+        if ($request->filled('location_id')) {
+            $query->where('location_id', $request->location_id);
+        }
+
+        if ($request->filled('action')) {
+            $query->where('action', 'like', '%' . $request->action . '%');
+        }
+
+        $logs = $query->paginate(20)->withQueryString();
+        $locations = Location::all();
+
+        return view('admin.audit-logs.index', compact('logs', 'locations'));
+    }
 }
+
+
+

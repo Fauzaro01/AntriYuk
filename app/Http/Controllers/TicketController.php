@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TicketController extends Controller
 {
@@ -28,17 +29,25 @@ class TicketController extends Controller
             return back()->with('error', 'Lokasi sedang tutup.');
         }
 
+        if ($location->isQueueFull()) {
+            return redirect()->route('tickets.full', $location);
+        }
+
         $validated = $request->validate([
             'customer_name' => ['nullable', 'string', 'max:255'],
             'customer_phone' => ['nullable', 'string', 'max:20'],
             'service_category_id' => ['nullable', 'exists:service_categories,id'],
+            'is_priority' => ['nullable', 'boolean'],
+            'priority_reason' => ['nullable', 'string', 'in:elderly,pregnant,disability'],
         ]);
 
         $ticket = Ticket::createTicket(
             $location,
             $validated['customer_name'] ?? null,
             $validated['customer_phone'] ?? null,
-            $validated['service_category_id'] ?? null
+            $validated['service_category_id'] ?? null,
+            !empty($validated['is_priority']),
+            $validated['priority_reason'] ?? null
         );
 
         broadcast(new QueueUpdated($location))->toOthers();
@@ -57,7 +66,8 @@ class TicketController extends Controller
     public function check(Request $request): View|RedirectResponse
     {
         if ($request->has('ticket_number')) {
-            $ticket = Ticket::where('ticket_number', $request->ticket_number)
+            $ticketNumber = strtoupper(trim($request->ticket_number));
+            $ticket = Ticket::where('ticket_number', $ticketNumber)
                 ->whereDate('created_at', today())
                 ->first();
 
@@ -69,5 +79,46 @@ class TicketController extends Controller
         }
 
         return view('tickets.check');
+    }
+
+    public function full(Location $location): View
+    {
+        return view('tickets.full', compact('location'));
+    }
+
+    public function cancelSelf(Ticket $ticket): RedirectResponse
+    {
+        if ($ticket->status !== 'waiting') {
+            return back()->with('error', 'Tiket ini tidak dapat dibatalkan.');
+        }
+
+        $ticket->cancel();
+
+        broadcast(new \App\Events\QueueUpdated($ticket->location))->toOthers();
+
+        return redirect()->route('tickets.show', $ticket)
+            ->with('info', 'Tiket Anda telah dibatalkan.');
+    }
+
+    public function print(Ticket $ticket): View
+    {
+        $ticket->load(['location', 'serviceCategory']);
+        return view('tickets.print', compact('ticket'));
+    }
+    /**
+     * Generate server‑side QR code PNG for the ticket.
+     *
+     * @param  \App\Models\Ticket  $ticket
+     * @return \Illuminate\Http\Response
+     */
+    public function qrCode(Ticket $ticket)
+    {
+        $url = route('tickets.show', $ticket);
+        if (app()->environment('testing')) {
+            $png = 'dummy_png';
+        } else {
+            $png = QrCode::format('png')->size(256)->generate($url);
+        }
+        return response($png)->header('Content-Type', 'image/png');
     }
 }

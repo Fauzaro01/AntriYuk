@@ -17,12 +17,16 @@ class Ticket extends Model
     protected $fillable = [
         'location_id',
         'service_category_id',
+        'transferred_from_category_id',
+        'transfer_reason',
         'counter_id',
         'served_by',
         'ticket_number',
         'customer_name',
         'customer_phone',
         'status',
+        'is_priority',
+        'priority_reason',
         'called_at',
         'served_at',
         'completed_at',
@@ -33,6 +37,7 @@ class Ticket extends Model
     protected function casts(): array
     {
         return [
+            'is_priority' => 'boolean',
             'called_at' => 'datetime',
             'served_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -60,9 +65,20 @@ class Ticket extends Model
         return $this->belongsTo(ServiceCategory::class);
     }
 
+    public function transferredFromCategory(): BelongsTo
+    {
+        return $this->belongsTo(ServiceCategory::class, 'transferred_from_category_id');
+    }
+
     public function feedback(): HasOne
     {
         return $this->hasOne(Feedback::class);
+    }
+
+    // Rating relationship
+    public function rating(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(\App\Models\Rating::class);
     }
 
     public function getPositionAttribute(): int
@@ -71,9 +87,14 @@ class Ticket extends Model
             return 0;
         }
 
-        return Ticket::where('location_id', $this->location_id)
-            ->where('status', 'waiting')
-            ->where('created_at', '<', $this->created_at)
+        $query = Ticket::where('location_id', $this->location_id)
+            ->where('status', 'waiting');
+
+        if ($this->service_category_id) {
+            $query->where('service_category_id', $this->service_category_id);
+        }
+
+        return $query->where('created_at', '<', $this->created_at)
             ->count() + 1;
     }
 
@@ -83,7 +104,7 @@ class Ticket extends Model
             return 0;
         }
 
-        return $this->location->getEstimatedWaitTime($this->position);
+        return $this->location->getEstimatedWaitTimeForCategory($this->position, $this->service_category_id);
     }
 
     public function call(Counter $counter, User $operator): void
@@ -142,19 +163,92 @@ class Ticket extends Model
         broadcast(new TicketStatusChanged($this))->toOthers();
     }
 
-    public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null): self
+    public function transferToCategory(ServiceCategory $newCategory, ?string $reason = null): void
     {
-        $ticket = self::create([
-            'location_id' => $location->id,
-            'service_category_id' => $serviceCategoryId,
-            'ticket_number' => $location->generateTicketNumber(),
-            'customer_name' => $customerName,
-            'customer_phone' => $customerPhone,
+        $oldCategoryId = $this->service_category_id;
+
+        $this->update([
+            'transferred_from_category_id' => $oldCategoryId,
+            'service_category_id' => $newCategory->id,
+            'transfer_reason' => $reason,
             'status' => 'waiting',
+            'counter_id' => null,
+            'served_by' => null,
+            'called_at' => null,
+            'served_at' => null,
         ]);
 
-        broadcast(new TicketCreated($ticket))->toOthers();
+        broadcast(new TicketStatusChanged($this))->toOthers();
+    }
 
-        return $ticket;
+    public function getWaitDurationMinutesAttribute(): int
+    {
+        if ($this->called_at) {
+            return (int) $this->created_at->diffInMinutes($this->called_at);
+        }
+
+        if ($this->completed_at) {
+            return (int) $this->created_at->diffInMinutes($this->completed_at);
+        }
+
+        return (int) $this->created_at->diffInMinutes(now());
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        if ($this->status !== 'waiting') {
+            return false;
+        }
+
+        $threshold = $this->location->sla_waiting_threshold_minutes ?? 15;
+        return $this->wait_duration_minutes >= $threshold;
+    }
+
+    public function getSlaStatusAttribute(): string
+    {
+        if ($this->status !== 'waiting') {
+            return 'normal';
+        }
+
+        $threshold = $this->location->sla_waiting_threshold_minutes ?? 15;
+        $minutes = $this->wait_duration_minutes;
+
+        if ($minutes >= $threshold) {
+            return 'overdue';
+        }
+
+        if ($minutes >= floor($threshold * 0.75)) {
+            return 'warning';
+        }
+
+        return 'normal';
+    }
+
+    public static function createTicket(Location $location, ?string $customerName = null, ?string $customerPhone = null, ?int $serviceCategoryId = null, bool $isPriority = false, ?string $priorityReason = null): self
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($location, $customerName, $customerPhone, $serviceCategoryId, $isPriority, $priorityReason) {
+            // Count today's tickets with a row lock to prevent race conditions on ticket number generation
+            $todayCount = self::where('location_id', $location->id)
+                ->whereDate('created_at', today())
+                ->lockForUpdate()
+                ->count();
+
+            $ticketNumber = sprintf('%s-%03d', $location->code, $todayCount + 1);
+
+            $ticket = self::create([
+                'location_id' => $location->id,
+                'service_category_id' => $serviceCategoryId,
+                'ticket_number' => $ticketNumber,
+                'customer_name' => $customerName,
+                'customer_phone' => $customerPhone,
+                'status' => 'waiting',
+                'is_priority' => $isPriority,
+                'priority_reason' => $priorityReason,
+            ]);
+
+            broadcast(new TicketCreated($ticket))->toOthers();
+
+            return $ticket;
+        });
     }
 }

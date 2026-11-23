@@ -121,3 +121,37 @@ test('operator can skip ticket', function () {
         'status' => 'skipped',
     ]);
 });
+
+test('operator can transfer ticket to another service category', function () {
+    $location = Location::factory()->create();
+    $cat1 = \App\Models\ServiceCategory::factory()->create(['location_id' => $location->id, 'name' => 'CS']);
+    $cat2 = \App\Models\ServiceCategory::factory()->create(['location_id' => $location->id, 'name' => 'Pembayaran']);
+
+    $counter = Counter::factory()->create(['location_id' => $location->id]);
+    $operator = User::factory()->create([
+        'role' => 'operator',
+        'location_id' => $location->id,
+    ]);
+
+    $ticket = Ticket::factory()->create([
+        'location_id' => $location->id,
+        'service_category_id' => $cat1->id,
+        'counter_id' => $counter->id,
+        'served_by' => $operator->id,
+        'status' => 'serving',
+    ]);
+
+    $response = $this->actingAs($operator)->post("/operator/tickets/{$ticket->id}/transfer", [
+        'service_category_id' => $cat2->id,
+        'transfer_reason' => 'Perlu penanganan pembayaran',
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('tickets', [
+        'id' => $ticket->id,
+        'service_category_id' => $cat2->id,
+        'transferred_from_category_id' => $cat1->id,
+        'transfer_reason' => 'Perlu penanganan pembayaran',
+        'status' => 'waiting',
+    ]);
+});

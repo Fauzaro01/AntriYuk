@@ -116,6 +116,18 @@ test('can check booking by code', function () {
     $response->assertRedirect("/bookings/{$booking->id}");
 });
 
+test('can check booking by code with lowercase and whitespace', function () {
+    $location = Location::factory()->create(['code' => 'BK5']);
+    $booking = Booking::factory()->confirmed()->create([
+        'location_id' => $location->id,
+        'booking_code' => 'BK-BK5-001',
+    ]);
+
+    $response = $this->get('/bookings/check?booking_code=%20bk-bk5-001%20');
+
+    $response->assertRedirect("/bookings/{$booking->id}");
+});
+
 test('invalid booking code shows error', function () {
     $response = $this->get('/bookings/check?booking_code=INVALID');
 

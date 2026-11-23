@@ -8,10 +8,13 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Broadcasting\PrivateChannel;
 
 class TicketCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public $broadcastConnection = 'reverb';
 
     public function __construct(
         public Ticket $ticket
@@ -20,7 +23,7 @@ class TicketCreated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('location.' . $this->ticket->location_id),
+            new PrivateChannel('dashboard.admin'),
         ];
     }
 

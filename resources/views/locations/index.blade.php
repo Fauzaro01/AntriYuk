@@ -17,16 +17,25 @@
             <p class="text-slate-600 dark:text-slate-400 mt-2">Pilih lokasi untuk mengambil tiket antrian digital</p>
         </div>
 
-        <!-- Search/Filter (optional enhancement) -->
+    <div x-data="{ filter: 'all' }">
+        <!-- Search/Filter -->
         <div class="mb-6">
             <div class="flex flex-wrap gap-3">
-                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-600 text-white cursor-pointer">
+                <button 
+                    @click="filter = 'all'" 
+                    :class="filter === 'all' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:border-blue-300'"
+                    class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all"
+                >
                     Semua
-                </span>
-                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:border-blue-300 cursor-pointer">
-                    <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                </button>
+                <button 
+                    @click="filter = 'open'" 
+                    :class="filter === 'open' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 hover:border-blue-300'"
+                    class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all"
+                >
+                    <span class="w-2 h-2 rounded-full mr-2" :class="filter === 'open' ? 'bg-white' : 'bg-green-500'"></span>
                     Buka Sekarang
-                </span>
+                </button>
             </div>
         </div>
 
@@ -43,7 +52,10 @@
         @else
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($locations as $location)
-                    <div class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-300">
+                    <div 
+                        x-show="filter === 'all' || (filter === 'open' && {{ $location->isOpen() ? 'true' : 'false' }})"
+                        class="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-300"
+                    >
                         <!-- Card Header -->
                         <div class="p-6">
                             <div class="flex items-start justify-between mb-4">
@@ -106,7 +118,7 @@
                         </div>
                     </div>
                 @endforeach
-            </div>
         @endif
+    </div>
     </div>
 </x-layout>

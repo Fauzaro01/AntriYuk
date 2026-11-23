@@ -17,6 +17,13 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <a href="{{ route('admin.audit-logs') }}" class="flex items-center gap-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            📜 Audit Log
+                        </a>
+                        <a href="{{ route('admin.monitor') }}" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+                            <span class="w-2 h-2 bg-emerald-300 rounded-full animate-pulse"></span>
+                            Live Monitor
+                        </a>
                         <a href="{{ route('home') }}" class="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white px-3 py-2 text-sm font-medium">
                             Lihat Situs
                         </a>
@@ -32,7 +39,7 @@
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm text-slate-500 dark:text-slate-400">Total Lokasi</p>
-                            <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1">{{ $stats['total_locations'] }}</p>
+                            <p class="text-3xl font-bold text-slate-900 dark:text-white mt-1" data-stat="total_locations">{{ $stats['total_locations'] }}</p>
                             <p class="text-sm text-green-600 dark:text-green-400 mt-1">{{ $stats['active_locations'] }} aktif</p>
                         </div>
                         <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center">
@@ -138,6 +145,56 @@
                 </a>
             </div>
 
+            {{-- ============================================================ --}}
+            {{-- CHARTS SECTION --}}
+            {{-- ============================================================ --}}
+            <div class="mb-8">
+                <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                    <span class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center text-base">📊</span>
+                    Grafik & Analitik Hari Ini
+                </h2>
+                <div class="grid lg:grid-cols-3 gap-6">
+
+                    {{-- Chart 1: Donut — status distribution --}}
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        <h3 class="font-bold text-slate-900 dark:text-white mb-1">Distribusi Status Tiket</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Hari ini secara keseluruhan</p>
+                        <div class="relative h-52 flex items-center justify-center">
+                            <canvas id="donut-chart"></canvas>
+                            <div class="absolute text-center pointer-events-none" id="donut-center">
+                                <p class="text-3xl font-black text-slate-900 dark:text-white">{{ array_sum($donutData) }}</p>
+                                <p class="text-xs text-slate-500">Total</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0"></span><span class="text-slate-600 dark:text-slate-400">Selesai ({{ $donutData['completed'] }})</span></div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-amber-400 flex-shrink-0"></span><span class="text-slate-600 dark:text-slate-400">Menunggu ({{ $donutData['waiting'] }})</span></div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-red-400 flex-shrink-0"></span><span class="text-slate-600 dark:text-slate-400">Dilewati ({{ $donutData['skipped'] }})</span></div>
+                            <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-slate-400 flex-shrink-0"></span><span class="text-slate-600 dark:text-slate-400">Dibatalkan ({{ $donutData['cancelled'] }})</span></div>
+                        </div>
+                    </div>
+
+                    {{-- Chart 2: Hourly bar --}}
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        <h3 class="font-bold text-slate-900 dark:text-white mb-1">Tiket Per Jam</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Volume antrian sepanjang hari</p>
+                        <div class="h-52">
+                            <canvas id="hourly-chart"></canvas>
+                        </div>
+                    </div>
+
+                    {{-- Chart 3: Per-location bar --}}
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+                        <h3 class="font-bold text-slate-900 dark:text-white mb-1">Perbandingan Lokasi</h3>
+                        <p class="text-slate-500 dark:text-slate-400 text-sm mb-4">Selesai vs Menunggu per lokasi</p>
+                        <div class="h-52">
+                            <canvas id="location-chart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             <!-- Locations Overview Table -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
@@ -227,4 +284,103 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        const isDark = document.documentElement.classList.contains('dark');
+        const gridColor  = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+        const labelColor = isDark ? '#94a3b8' : '#64748b';
+
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.animation.duration = 800;
+
+        // ── Chart 1: Donut ────────────────────────────────────────────
+        new Chart(document.getElementById('donut-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Selesai', 'Menunggu', 'Dilewati', 'Dibatalkan'],
+                datasets: [{
+                    data: [
+                        {{ $donutData['completed'] }},
+                        {{ $donutData['waiting'] }},
+                        {{ $donutData['skipped'] }},
+                        {{ $donutData['cancelled'] }},
+                    ],
+                    backgroundColor: ['#10b981', '#fbbf24', '#f87171', '#94a3b8'],
+                    borderWidth: 0,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                cutout: '72%',
+                plugins: { legend: { display: false }, tooltip: { callbacks: {
+                    label: ctx => ` ${ctx.label}: ${ctx.parsed} tiket`
+                }}},
+                responsive: true,
+                maintainAspectRatio: false,
+            }
+        });
+
+        // ── Chart 2: Hourly Bar ───────────────────────────────────────
+        const hourlyLabels = @json($hourlyLabels);
+        const hourlyValues = @json($hourlyValues);
+
+        new Chart(document.getElementById('hourly-chart'), {
+            type: 'bar',
+            data: {
+                labels: hourlyLabels,
+                datasets: [{
+                    label: 'Tiket',
+                    data: hourlyValues,
+                    backgroundColor: 'rgba(99,102,241,0.75)',
+                    borderRadius: 6,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 10 } } },
+                    y: { grid: { color: gridColor }, ticks: { color: labelColor, precision: 0 }, beginAtZero: true },
+                }
+            }
+        });
+
+        // ── Chart 3: Per-Location Bar ─────────────────────────────────
+        new Chart(document.getElementById('location-chart'), {
+            type: 'bar',
+            data: {
+                labels: @json($locationChartData['labels']),
+                datasets: [
+                    {
+                        label: 'Selesai',
+                        data: @json($locationChartData['completed']),
+                        backgroundColor: 'rgba(16,185,129,0.8)',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    },
+                    {
+                        label: 'Menunggu',
+                        data: @json($locationChartData['waiting']),
+                        backgroundColor: 'rgba(251,191,36,0.8)',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { color: labelColor, boxWidth: 12, padding: 12 } } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: labelColor, font: { size: 10 } } },
+                    y: { grid: { color: gridColor }, ticks: { color: labelColor, precision: 0 }, beginAtZero: true },
+                }
+            }
+        });
+    </script>
+    @endpush
 </x-layout>

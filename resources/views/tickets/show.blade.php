@@ -17,7 +17,7 @@
             <!-- Main Ticket Card -->
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden">
                 <!-- Ticket Header with Ticket Number -->
-                <div class="relative bg-blue-600 text-white p-8 text-center">
+                <div id="ticket-download-card" class="relative bg-blue-600 text-white p-8 text-center">
                     <!-- Decorative Pattern -->
                     <div class="absolute inset-0 opacity-10">
                         <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -52,6 +52,61 @@
 
                 <!-- Status Section -->
                 <div id="ticket-status-section" class="p-6">
+                    @if(!in_array($ticket->status, ['skipped', 'cancelled']))
+                        <!-- Progress Stepper -->
+                        <div class="mb-8 px-2">
+                            <div class="flex items-center justify-between relative">
+                                <!-- Background line -->
+                                <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 dark:bg-slate-700 -z-10 rounded-full"></div>
+                                <!-- Active progress line -->
+                                @php
+                                    $progressWidth = '0%';
+                                    if ($ticket->status === 'waiting') $progressWidth = '15%';
+                                    elseif ($ticket->status === 'calling') $progressWidth = '50%';
+                                    elseif ($ticket->status === 'serving') $progressWidth = '85%';
+                                    elseif ($ticket->status === 'completed') $progressWidth = '100%';
+                                @endphp
+                                <div class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-blue-600 dark:bg-blue-500 -z-10 rounded-full transition-all duration-500" style="width: {{ $progressWidth }}"></div>
+
+                                <!-- Step 1: Waiting -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['waiting', 'calling', 'serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500' }}">
+                                        1
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Antri</span>
+                                </div>
+
+                                <!-- Step 2: Calling -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['calling', 'serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : ($ticket->status === 'waiting' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        2
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Dipanggil</span>
+                                </div>
+
+                                <!-- Step 3: Serving -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ in_array($ticket->status, ['serving', 'completed']) ? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500 text-white' : ($ticket->status === 'calling' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 animate-pulse' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        3
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Dilayani</span>
+                                </div>
+
+                                <!-- Step 4: Completed -->
+                                <div class="flex flex-col items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs border-2 transition-colors duration-300
+                                        {{ $ticket->status === 'completed' ? 'bg-green-600 border-green-600 text-white' : ($ticket->status === 'serving' ? 'bg-white dark:bg-slate-800 border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-500') }}">
+                                        ✓
+                                    </div>
+                                    <span class="text-xs mt-1.5 font-medium text-slate-600 dark:text-slate-400">Selesai</span>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="text-center mb-6">
                         @if($ticket->status === 'waiting')
                             <div class="inline-flex items-center bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-6 py-3 rounded-2xl">
@@ -183,22 +238,92 @@
                         </dl>
                     </div>
                 </div>
-
                 <!-- Actions -->
                 <div class="bg-slate-50 dark:bg-slate-900/50 p-6 border-t border-slate-200 dark:border-slate-700">
                     <!-- QR Code -->
                     <div class="text-center mb-4">
                         <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">Scan QR untuk cek status</p>
-                        <div id="qrcode" class="inline-block"></div>
+                        <img src="{{ route('admin.tickets.qr', $ticket) }}" alt="QR Code" class="inline-block" />
                     </div>
 
-                    <a href="{{ route('locations.show', $ticket->location) }}" class="flex items-center justify-center text-blue-600 hover:text-blue-700 font-semibold">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Lihat Antrian Lokasi
-                    </a>
+                    <!-- Download & View buttons -->
+                    @php
+                        $waText = rawurlencode("Halo, ini nomor tiket antrian saya di " . $ticket->location->name . ": *" . $ticket->ticket_number . "*\n\nLihat status antrian live di:\n" . request()->fullUrl());
+                        $waUrl = "https://api.whatsapp.com/send?text=" . $waText;
+                    @endphp
+
+                    <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                        <button
+                            id="btn-download-ticket"
+                            onclick="downloadTicketCard()"
+                            class="flex-1 flex items-center justify-center gap-2 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Simpan Gambar
+                        </button>
+
+                        <a href="{{ route('tickets.print', $ticket) }}" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            Cetak Struk Thermal
+                        </a>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="{{ $waUrl }}" target="_blank" rel="noopener noreferrer" class="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+                            </svg>
+                            Kirim ke WA
+                        </a>
+
+                        <button
+                            id="btn-web-push"
+                            onclick="enableWebPushNotification()"
+                            class="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl font-semibold transition-all active:scale-95 text-sm"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            Notifikasi HP
+                        </button>
+                    </div>
+
+                    @if($ticket->status === 'waiting')
+                        <div x-data="{ open: false }" class="mt-4 border-t border-slate-100 dark:border-slate-700/60 pt-4">
+                            <button
+                                @click="open = true"
+                                class="w-full bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-1.5"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Batalkan Tiket
+                            </button>
+
+                            {{-- Confirm Modal --}}
+                            <div x-show="open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                                <div @click.away="open = false" class="bg-white dark:bg-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-700 text-left">
+                                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Batalkan Tiket?</h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Apakah Anda yakin ingin membatalkan tiket ini? Tindakan ini tidak dapat dibatalkan.</p>
+                                    <div class="flex justify-end gap-3">
+                                        <button @click="open = false" type="button" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                            Batal
+                                        </button>
+                                        <form method="POST" action="{{ route('tickets.cancel-self', $ticket) }}">
+                                            @csrf
+                                            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors">
+                                                Ya, Batalkan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 @if($ticket->status === 'completed' && !$ticket->feedback)
@@ -266,18 +391,8 @@
     </div>
 
     @push('scripts')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module">
-        // Generate QR Code
-        if (document.getElementById('qrcode') && typeof QRCode !== 'undefined') {
-            new QRCode(document.getElementById('qrcode'), {
-                text: '{{ route("tickets.show", $ticket) }}',
-                width: 100,
-                height: 100,
-                colorDark: '#1e293b',
-                colorLight: '#ffffff',
-            });
-        }
-
         let refreshTimer;
 
         async function refreshTicketStatus(playSound = false, notifyData = null) {
@@ -335,6 +450,122 @@
         // Request notification permission
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
+        }
+
+        // Save ticket to localStorage for "My Tickets" quick access
+        (function saveMyTicket() {
+            try {
+                const ticketData = {
+                    id:       {{ $ticket->id }},
+                    number:   '{{ $ticket->ticket_number }}',
+                    location: '{{ $ticket->location->name }}',
+                    status:   '{{ $ticket->status }}',
+                    url:      '{{ route("tickets.show", $ticket) }}',
+                    date:     new Date().toDateString(),
+                };
+
+                const raw = localStorage.getItem('antriyuk_my_tickets');
+                let tickets = raw ? JSON.parse(raw) : [];
+
+                // Remove outdated entries (older than today) to keep storage lean
+                const today = new Date().toDateString();
+                tickets = tickets.filter(t => t.date === today);
+
+                // Update if exists, otherwise push
+                const idx = tickets.findIndex(t => t.id === ticketData.id);
+                if (idx > -1) {
+                    tickets[idx] = ticketData;
+                } else {
+                    tickets.push(ticketData);
+                }
+
+                // Keep max 20 tickets per day
+                if (tickets.length > 20) tickets = tickets.slice(-20);
+
+                localStorage.setItem('antriyuk_my_tickets', JSON.stringify(tickets));
+            } catch (e) {}
+        })();
+
+        // Generate QR Code of the current ticket URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const qrEl = document.getElementById('qrcode');
+            if (qrEl && window.QRCode) {
+                new QRCode(qrEl, {
+                    text: "{{ route('tickets.show', $ticket) }}",
+                    width: 128,
+                    height: 128,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            }
+        });
+    </script>
+
+    <script>
+        async function downloadTicketCard() {
+            const btn = document.getElementById('btn-download-ticket');
+            const cardEl = document.getElementById('ticket-download-card');
+            if (!cardEl || !window.html2canvas) return;
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Menyiapkan...';
+            btn.disabled = true;
+
+            try {
+                const canvas = await html2canvas(cardEl, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: null,
+                    logging: false,
+                });
+
+                const link = document.createElement('a');
+                link.download = 'tiket-{{ $ticket->ticket_number }}.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Tersimpan!';
+            } catch (err) {
+                console.error('Download ticket card failed:', err);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Register Service Worker for Web Push
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.warn('SW registration skipped:', err);
+            });
+        }
+
+        async function enableWebPushNotification() {
+            const btn = document.getElementById('btn-web-push');
+            if (!('Notification' in window)) {
+                alert('Browser Anda tidak mendukung notifikasi push.');
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                btn.classList.add('bg-emerald-600');
+                btn.innerHTML = '✓ Notifikasi HP Aktif';
+                btn.disabled = true;
+
+                if ('serviceWorker' in navigator) {
+                    const reg = await navigator.serviceWorker.ready;
+                    reg.showNotification('🎫 Notifikasi Tiket Aktif!', {
+                        body: 'Anda akan menerima pemberitahuan otomatis saat giliran tiket {{ $ticket->ticket_number }} tiba.',
+                        icon: '/favicon.ico',
+                        data: window.location.href
+                    });
+                }
+            } else {
+                alert('Izin notifikasi tidak diberikan.');
+            }
         }
     </script>
     @endpush

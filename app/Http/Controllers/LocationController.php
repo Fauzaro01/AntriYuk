@@ -38,4 +38,16 @@ class LocationController extends Controller
     {
         return view('locations.display', compact('location'));
     }
+
+    public function kiosk(Location $location): View
+    {
+        if (!$location->isOpen()) {
+            return view('tickets.closed', compact('location'));
+        }
+
+        $serviceCategories = $location->serviceCategories()->where('is_active', true)->get();
+        $waitingCount = $location->waitingTickets()->count();
+
+        return view('locations.kiosk', compact('location', 'serviceCategories', 'waitingCount'));
+    }
 }

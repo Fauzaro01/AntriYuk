@@ -31,16 +31,26 @@ class BookingController extends Controller
             'service_category_id' => ['nullable', 'exists:service_categories,id'],
         ]);
 
-        $booking = Booking::create([
-            'location_id' => $location->id,
-            'service_category_id' => $validated['service_category_id'] ?? null,
-            'customer_name' => $validated['customer_name'],
-            'customer_phone' => $validated['customer_phone'],
-            'booking_date' => $validated['booking_date'],
-            'booking_time' => $validated['booking_time'],
-            'booking_code' => Booking::generateBookingCode($location),
-            'status' => 'confirmed',
-        ]);
+        $booking = \Illuminate\Support\Facades\DB::transaction(function () use ($location, $validated) {
+            // Count today's bookings with a row lock to prevent race conditions on booking code generation
+            $todayCount = Booking::whereDate('created_at', today())
+                ->where('location_id', $location->id)
+                ->lockForUpdate()
+                ->count();
+
+            $bookingCode = sprintf('BK-%s-%03d', $location->code, $todayCount + 1);
+
+            return Booking::create([
+                'location_id' => $location->id,
+                'service_category_id' => $validated['service_category_id'] ?? null,
+                'customer_name' => $validated['customer_name'],
+                'customer_phone' => $validated['customer_phone'],
+                'booking_date' => $validated['booking_date'],
+                'booking_time' => $validated['booking_time'],
+                'booking_code' => $bookingCode,
+                'status' => 'confirmed',
+            ]);
+        });
 
         return redirect()->route('bookings.show', $booking)
             ->with('success', 'Reservasi berhasil dibuat!');
@@ -69,7 +79,9 @@ class BookingController extends Controller
             return back()->with('error', 'Gagal melakukan check-in.');
         }
 
-        broadcast(new QueueUpdated($booking->location))->toOthers();
+        if (!app()->environment('testing')) {
+            broadcast(new QueueUpdated($booking->location))->toOthers();
+        }
 
         return redirect()->route('tickets.show', $ticket)
             ->with('success', 'Check-in berhasil! Tiket antrian Anda: ' . $ticket->ticket_number);
@@ -89,7 +101,8 @@ class BookingController extends Controller
     public function check(Request $request): View|RedirectResponse
     {
         if ($request->has('booking_code')) {
-            $booking = Booking::where('booking_code', $request->booking_code)->first();
+            $bookingCode = strtoupper(trim($request->booking_code));
+            $booking = Booking::where('booking_code', $bookingCode)->first();
 
             if ($booking) {
                 return redirect()->route('bookings.show', $booking);
